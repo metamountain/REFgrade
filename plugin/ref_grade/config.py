@@ -6,10 +6,14 @@ import os
 import shutil
 from pathlib import Path
 
-ROOT: Path = Path(__file__).resolve().parents[2]
+_HERE: Path = Path(__file__).resolve().parent
+# ZIP-Installation: der Kern liegt gebündelt neben dem Plugin (ref_grade/core).
+# Entwicklung (Junction auf plugin/ref_grade): Repo-Layout, Kern in <Repo>/core.
+_BUNDLED: bool = (_HERE / "core").is_dir()
+ROOT: Path = _HERE if _BUNDLED else _HERE.parents[1]
 CORE: Path = ROOT / "core"
-POOL: Path = ROOT / "bench" / "pool"
-LUTS: Path = ROOT / "luts"
+POOL: Path = ROOT / "bench" / "pool"   # nur im Repo vorhanden; fehlend ist unkritisch
+LUTS: Path = (Path(os.environ.get("APPDATA", "")) / "krita" / "luts") if _BUNDLED else ROOT / "luts"
 PORT: int = 47123
 
 _SKIP_PATTERNS = ("windowsapps", "pythonmanager")
@@ -20,6 +24,9 @@ def python_exe() -> str | None:
     env = os.environ.get("REFGRADE_PYTHON")
     if env:
         return env
+    from . import runtime
+    if runtime.is_installed():
+        return str(runtime.venv_python())
     for name in ("python", "python3"):
         p = shutil.which(name)
         if p and not any(pat in p.lower() for pat in _SKIP_PATTERNS):

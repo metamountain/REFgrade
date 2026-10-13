@@ -9,9 +9,11 @@
 !/install.py
 !/REFgrade.bat
 !/plugin/
+!/tools/
 !/core/
 !/standalone/
 
+/dist/
 __pycache__/
 *.pyc
 .pytest_cache/

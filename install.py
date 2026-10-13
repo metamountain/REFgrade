@@ -35,7 +35,7 @@ def _targets() -> dict[str, Path]:
 
 
 def _is_junction(path: Path) -> bool:
-    return path.exists() and os.path.islink(path)
+    return os.path.isjunction(path) or os.path.islink(path)
 
 
 def _do_install(dry: bool) -> None:

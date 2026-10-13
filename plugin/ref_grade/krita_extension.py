@@ -6,12 +6,14 @@ client / source / save_lut / on_ok. On Krita exit the worker is stopped.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from krita import Extension, Krita
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox
 
-from . import config, krita_bridge, worker_client, worker_process
+from . import config, dlg_install, krita_bridge, runtime, worker_client, worker_process
 from .dialog import RefGradeDialog
 
 MAX_SIDE = 4096          # Document.thumbnail returns a null image if the size is too big
@@ -48,10 +50,28 @@ class RefGradeExtension(Extension):
 
         # 1. Ensure worker
         python = config.python_exe()
-        if python is None:
-            QMessageBox.critical(parent, "RefGrade",
-                                 "Python interpreter not found. Set REFGRADE_PYTHON.")
-            return
+        if os.environ.get("REFGRADE_PYTHON"):
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                ok = runtime.python_ok(python)
+            finally:
+                QApplication.restoreOverrideCursor()
+            if not ok:
+                QMessageBox.critical(parent, "RefGrade",
+                    f"REFGRADE_PYTHON = {python}\ncannot import torch, numpy, kornia and PIL.\n"
+                    "Fix that Python or remove the variable to use the built-in runtime.")
+                return
+        else:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                need_install = python is None or not runtime.python_ok(python)
+            finally:
+                QApplication.restoreOverrideCursor()
+            if need_install:
+                if not dlg_install.run_installer(parent):
+                    return
+                runtime.reset_cache()
+                python = config.python_exe()
         try:
             worker_process.ensure(self._port, python, config.CORE, timeout=30.0)
             self._worker_started = True
