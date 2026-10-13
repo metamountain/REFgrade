@@ -180,9 +180,9 @@ class K13TestBase(unittest.TestCase):
         self.dlg.resize(1920, 1080)
         self.dlg.show()
         _wait(self.app, lambda: self.dlg.isVisible())
-        # Load the LUT folder
+        # Load the LUT folder (K27e: popup is populated on open, not on load)
         self.dlg._lut_folder_btn.click()
-        _wait(self.app, lambda: self.dlg._lut_combo.count() >= 2, timeout_ms=2000)
+        self.app.processEvents()
 
     def tearDown(self):
         self.dlg.close()
@@ -190,6 +190,7 @@ class K13TestBase(unittest.TestCase):
         self.app.processEvents()
 
 
+@unittest.skip("K27e: QComboBox → QPushButton + Tree-Popup; Verhalten in test_plugin_k27e.TestLutPopup")
 class TestLutDropdown(K13TestBase):
     """Dropdown: Einträge mit Unterordnern, Überschriften nicht auswählbar, Wheel skippt."""
 
@@ -232,6 +233,7 @@ class _FakeWheelEvent:
         return self._delta
 
 
+@unittest.skip("K27e: Hover wird im Tree-Popup intern gehandhabt; _lut_view_hover ist ein No-op")
 class TestLutHover(K13TestBase):
     """Hover: Überfahren sendet /preview mit mix.lut; Schließen ohne Auswahl → /preview ohne lut."""
 
@@ -281,10 +283,10 @@ class TestLutHover(K13TestBase):
 
 
 class TestLutSave(K13TestBase):
-    """SAVE: /cube in RefGrade-Unterordner, danach — REFGRADE — in der Liste, Auswahl bleibt — none —."""
+    """SAVE: /cube in RefGrade-Unterordner."""
 
     def test_save(self):
-        """SAVE → genau ein /cube, danach — REFGRADE — mit der Datei, Auswahl bleibt 0."""
+        """SAVE → genau ein /cube mit dir in RefGrade-Unterordner."""
         _wait(self.app, lambda: self.fake.count("/preview") >= 1, timeout_ms=2000)
 
         # Click SAVE
@@ -301,14 +303,8 @@ class TestLutSave(K13TestBase):
         self.assertIsNotNone(cube_payload)
         self.assertIn("RefGrade", cube_payload["dir"])
 
-        # After the response, the list is refreshed: — REFGRADE — appears
-        _wait(self.app, lambda: any(
-            self.dlg._lut_combo.itemText(i) == "— REFGRADE —"
-            for i in range(self.dlg._lut_combo.count())
-        ), timeout_ms=2000)
-
         # Selection is still — none —
-        self.assertEqual(self.dlg._lut_combo.currentIndex(), 0)
+        self.assertEqual(self.dlg._lut_combo.text(), "— none —")
 
 
 class TestWheelsDefaultOn(K13TestBase):

@@ -18,6 +18,7 @@ _pkg.__path__ = [str(_PLUGIN_DIR)]
 sys.modules["ref_grade"] = _pkg
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
+os.environ.setdefault("REFGRADE_SETTINGS", "RefGradeTests")
 
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 from PyQt6.QtGui import QColor, QImage  # noqa: E402
@@ -155,28 +156,42 @@ class K8TestBase(unittest.TestCase):
 
 
 class TestLutFolder(K8TestBase):
-    """choose_folder delivers the folder → list = — none —, A, b, c; folder in QSettings."""
+    """choose_folder delivers the folder → label shows folder name; folder in QSettings."""
 
     def test_folder_list(self):
-        """After FOLDER… click, combo has 4 entries: — none —, A, b, c."""
+        """After FOLDER… click, folder label shows name and QSettings is updated."""
         _wait(self.app, lambda: self.fake.count("/preview") >= 1, timeout_ms=2000)
 
         # Click FOLDER…
         self.dlg._lut_folder_btn.click()
-        _wait(self.app, lambda: self.dlg._lut_combo.count() == 4, timeout_ms=2000)
+        self.app.processEvents()
 
-        # Check entries
-        self.assertEqual(self.dlg._lut_combo.count(), 4)
-        self.assertEqual(self.dlg._lut_combo.itemText(0), "— none —")
-        self.assertEqual(self.dlg._lut_combo.itemText(1), "A")
-        self.assertEqual(self.dlg._lut_combo.itemText(2), "b")
-        self.assertEqual(self.dlg._lut_combo.itemText(3), "c")
+        # Folder label shows the folder name
+        self.assertIn("luts", self.dlg._lut_folder_label.text())
 
         # Folder is in QSettings
         from PyQt6.QtCore import QSettings
         settings = QSettings("RefGrade", os.environ.get("REFGRADE_SETTINGS", "RefGrade"))
         saved = settings.value("lut_folder", "")
         self.assertEqual(Path(saved), self.lut_folder)
+
+    def test_popup_shows_luts(self):
+        """Opening the popup shows — none — + 3 LUTs (A, b, c)."""
+        _wait(self.app, lambda: self.fake.count("/preview") >= 1, timeout_ms=2000)
+        self.dlg._lut_folder_btn.click()
+        self.app.processEvents()
+
+        # Open popup
+        self.dlg._lut_toggle_popup()
+        self.app.processEvents()
+        self.assertIsNotNone(self.dlg._lut_popup)
+        model = self.dlg._lut_popup._model
+        self.assertEqual(model.rowCount(), 4)
+        self.assertEqual(model.item(0, 0).text(), "— none —")
+        self.assertEqual(model.item(1, 0).text(), "A")
+        self.assertEqual(model.item(2, 0).text(), "b")
+        self.assertEqual(model.item(3, 0).text(), "c")
+        self.dlg._lut_popup.hide()
 
 
 class TestLutSelection(K8TestBase):
@@ -188,15 +203,18 @@ class TestLutSelection(K8TestBase):
 
         # Click FOLDER… to load the list
         self.dlg._lut_folder_btn.click()
-        _wait(self.app, lambda: self.dlg._lut_combo.count() == 4, timeout_ms=2000)
+        self.app.processEvents()
 
         initial = self.fake.count("/preview")
 
-        # Select "b" (index 2)
-        self.dlg._lut_combo.setCurrentIndex(2)
+        # Select "b" via the popup signal
+        self.dlg._lut_on_selected(str(self.lut_folder / "b.cube"))
         _wait(self.app, lambda: self.fake.count("/preview") >= initial + 1, timeout_ms=2000)
         time.sleep(0.05)
         self.app.processEvents()
+
+        # Button text shows the LUT name
+        self.assertEqual(self.dlg._lut_combo.text(), "b")
 
         # Section is ON
         self.assertTrue(self.dlg._lut_header.is_on())
@@ -221,8 +239,8 @@ class TestLutReset(K8TestBase):
 
         # Load folder and select b
         self.dlg._lut_folder_btn.click()
-        _wait(self.app, lambda: self.dlg._lut_combo.count() == 4, timeout_ms=2000)
-        self.dlg._lut_combo.setCurrentIndex(2)
+        self.app.processEvents()
+        self.dlg._lut_on_selected(str(self.lut_folder / "b.cube"))
         _wait(self.app, lambda: self.dlg._lut_header.is_on(), timeout_ms=2000)
 
         initial = self.fake.count("/preview")
@@ -233,8 +251,8 @@ class TestLutReset(K8TestBase):
         time.sleep(0.05)
         self.app.processEvents()
 
-        # Combo is back to — none —
-        self.assertEqual(self.dlg._lut_combo.currentIndex(), 0)
+        # Button is back to — none —
+        self.assertEqual(self.dlg._lut_combo.text(), "— none —")
         # Section is OFF
         self.assertFalse(self.dlg._lut_header.is_on())
 
@@ -245,14 +263,14 @@ class TestLutReset(K8TestBase):
 
 
 class TestLutPersist(K8TestBase):
-    """A new dialog reads the saved folder (list has 4 entries)."""
+    """A new dialog reads the saved folder (label shows folder name)."""
 
     def test_persist(self):
         _wait(self.app, lambda: self.fake.count("/preview") >= 1, timeout_ms=2000)
 
         # Load folder in first dialog
         self.dlg._lut_folder_btn.click()
-        _wait(self.app, lambda: self.dlg._lut_combo.count() == 4, timeout_ms=2000)
+        self.app.processEvents()
 
         # Close first dialog
         self.dlg.close()
@@ -268,13 +286,10 @@ class TestLutPersist(K8TestBase):
         self.dlg2.resize(1920, 1080)
         self.dlg2.show()
         _wait(self.app, lambda: self.dlg2.isVisible())
+        self.app.processEvents()
 
-        # The new dialog should have the folder loaded (4 entries)
-        self.assertEqual(self.dlg2._lut_combo.count(), 4)
-        self.assertEqual(self.dlg2._lut_combo.itemText(0), "— none —")
-        self.assertEqual(self.dlg2._lut_combo.itemText(1), "A")
-        self.assertEqual(self.dlg2._lut_combo.itemText(2), "b")
-        self.assertEqual(self.dlg2._lut_combo.itemText(3), "c")
+        # The new dialog should have the folder label set
+        self.assertIn("luts", self.dlg2._lut_folder_label.text())
 
         self.dlg2.close()
         self.dlg2.deleteLater()

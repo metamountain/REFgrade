@@ -24,10 +24,11 @@ class TestWheelsBlendingBalance(k9b.K9bTestBase):
 
     def test_blending_in_preview(self):
         self._wheels_on()
+        initial = self.fake.count("/preview")
         self._row("wheel_blending").set_value(0.3)
         self.app.processEvents()
         self.dialog._schedule_preview()
-        k9b._wait(self.app, lambda: self.fake.count("/preview") > 0, 2000)
+        k9b._wait(self.app, lambda: self.fake.count("/preview") > initial, 2000)
         payload = self.fake.last("/preview")
         self.assertIsNotNone(payload)
         self.assertAlmostEqual(payload["values"]["wheel_blending"], 0.3, places=4)

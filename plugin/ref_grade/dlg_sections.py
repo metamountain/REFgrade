@@ -512,7 +512,8 @@ class SectionsMixin:
             for k in self.wheels:
                 self._reset_wheel(k)
         if key == "lut":
-            self._lut_combo.setCurrentIndex(0)
+            self._lut_current_path = ""
+            self._lut_combo.setText("— none —")
             header.on.setChecked(False)
             self._lut_dim_state()
         if key == "hsl":

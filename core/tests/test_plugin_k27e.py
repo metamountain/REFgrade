@@ -239,99 +239,18 @@ class TestLoadingBar(K27eTestBase):
         self.app.processEvents()
 
 
-class TestLutHover(K27eTestBase):
-    """LUT-Hover: Debounce 120 ms, Rahmen, Schließen ohne Auswahl."""
+class TestLutPopup(K27eTestBase):
+    """LUT Tree-Popup: Button öffnet QTreeView, Auswahl wendet LUT an."""
 
-    def test_hover_debounce(self):
-        """3 Einträge schnell überfahren, auf dem dritten ruhen → genau ein /preview."""
-        previews = []
-
-        def fake_client(port, path, payload):
-            if path == "/preview":
-                previews.append(payload)
-                img_path = str(Path(os.environ.get("TEMP", "/tmp")) / "test_hover.png")
-                QImage(100, 100, QImage.Format.Format_RGB32).save(img_path)
-                return {"image": img_path, "histogram": {}, "ms": 10.0}
-            return {}
-
-        # Create a temp LUT folder with 3 .cube files
+    def test_popup_opens_and_shows_luts(self):
+        """Button-Click öffnet Popup mit LUT-Dateien aus dem Ordner."""
         import tempfile
         tmpdir = tempfile.mkdtemp(prefix="refgrade_test_lut_")
         for i in range(3):
             (Path(tmpdir) / f"test_lut_{i}.cube").write_text(
                 f"# LUT {i}\nLUT_3D_SIZE 2\n0 0 0\n1 1 1\n", encoding="utf-8")
 
-        QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", self._empty_lut_dir)
-        img = QImage(400, 300, QImage.Format.Format_RGB32)
-        img.fill(QColor(100, 140, 180))
-        dlg = RefGradeDialog(img, client=fake_client, source={"session": "test", "width": 400, "height": 300})
-        dlg.resize(W, H)
-        dlg.show()
-        _wait(self.app, lambda: dlg.width() >= W - 20)
-        self.app.processEvents()
-
-        # Load the LUT folder
-        dlg._refresh_lut_list(tmpdir)
-        self.app.processEvents()
-
-        combo = dlg._lut_combo
-        self.assertGreaterEqual(combo.count(), 4, f"Expected >= 4 items, got {combo.count()}")
-
-        # Open the combo popup
-        combo.showPopup()
-        self.app.processEvents()
-        view = combo.view()
-        self.assertIsNotNone(view)
-
-        # Wait for any initial preview from construction to complete
-        _wait(self.app, lambda: not dlg.view._loading, timeout_ms=2000)
-        self.app.processEvents()
-        # Reset: clear previews so we only count hover-triggered ones
-        previews.clear()
-
-        # Hover entries 1, 2, 3 in rapid succession (no event processing between,
-        # so the 120 ms debounce timer is restarted each time without firing)
-        dlg._lut_view_hover(1)
-        dlg._lut_view_hover(2)
-        dlg._lut_view_hover(3)
-
-        # Wait for a preview WITH a LUT in the mix (the hover preview, not the
-        # initial one triggered by _refresh_lut_list → setCurrentIndex → _schedule_preview)
-        _wait(self.app,
-              lambda: any(p.get("mix", {}).get("lut", "") for p in previews),
-              timeout_ms=3000)
-
-        # Filter: only previews with a LUT in the mix
-        lut_previews = [p for p in previews if p.get("mix", {}).get("lut", "")]
-        self.assertEqual(len(lut_previews), 1,
-                         f"Expected 1 LUT preview, got {len(lut_previews)}")
-        # The preview should be for the 3rd LUT
-        self.assertIn("test_lut_2", lut_previews[0]["mix"]["lut"],
-                      f"Wrong LUT: {lut_previews[0]['mix']['lut']}")
-
-        # Close without selection → restore preview (no LUT in mix)
-        n_before = len(previews)
-        dlg._lut_view_leave()
-        self.app.processEvents()
-        _wait(self.app, lambda: len(previews) > n_before, timeout_ms=2000)
-        if len(previews) > n_before:
-            restore_mix = previews[-1].get("mix", {})
-            self.assertNotIn("test_lut_2", restore_mix.get("lut", ""),
-                             "Restore preview should not have the hovered LUT")
-
-        combo.hidePopup()
-        dlg.close()
-        dlg.deleteLater()
-        self.app.processEvents()
-
-    def test_hover_frame_visible(self):
-        """Mouseover-Eintrag hat einen sichtbaren Rahmen (2px ACCENT_HI)."""
-        import tempfile
-        tmpdir = tempfile.mkdtemp(prefix="refgrade_test_lut_")
-        (Path(tmpdir) / "frame_test.cube").write_text(
-            "# Test\nLUT_3D_SIZE 2\n0 0 0\n1 1 1\n", encoding="utf-8")
-
-        QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", self._empty_lut_dir)
+        QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", tmpdir)
         img = QImage(400, 300, QImage.Format.Format_RGB32)
         img.fill(QColor(100, 140, 180))
         dlg = RefGradeDialog(img, source={"session": "test", "width": 400, "height": 300})
@@ -343,44 +262,161 @@ class TestLutHover(K27eTestBase):
         dlg._refresh_lut_list(tmpdir)
         self.app.processEvents()
 
-        combo = dlg._lut_combo
-        combo.showPopup()
+        # Click the button → popup opens
+        dlg._lut_toggle_popup()
         self.app.processEvents()
-        view = combo.view()
-        self.assertIsNotNone(view)
+        self.assertIsNotNone(dlg._lut_popup)
+        self.assertTrue(dlg._lut_popup.isVisible())
 
-        # Hover entry 1 (the LUT)
-        dlg._lut_view_hover(1)
+        # Model should have: "— none —" + 3 LUTs = 4 rows
+        model = dlg._lut_popup._model
+        self.assertEqual(model.rowCount(), 4)
+        self.assertEqual(model.item(0, 0).text(), "— none —")
+        self.assertEqual(model.item(1, 0).text(), "test_lut_0")
+
+        dlg._lut_popup.hide()
+        dlg.close()
+        dlg.deleteLater()
         self.app.processEvents()
 
-        # Check the delegate has the hover row set
-        self.assertEqual(dlg._lut_delegate._hover_row, 1)
+    def test_select_lut_updates_button_and_preview(self):
+        """LUT-Auswahl im Popup: Button-Text ändert sich, Preview wird gesendet."""
+        previews = []
 
-        # Grab the view and check for the frame color at the entry edge
-        view_img = view.grab().toImage()
-        # The first entry (index 0) is "— none —", index 1 is the LUT
-        # Check pixels at the edge of row 1 for ACCENT_HI color
-        row_h_view = view_img.height() // max(1, combo.count())
-        y = row_h_view + 1  # top edge of row 1 (adjusted by 1px)
-        x = 2  # 2px from left edge
-        c = QColor(view_img.pixel(x, y))
-        # The frame is ACCENT_HI = #B4B4B4
-        accent_hi = QColor(style.ACCENT_HI)
-        # Check if any pixel in the top 3 rows of entry 1 matches ACCENT_HI
-        found = False
-        for dy in range(3):
-            for dx in range(3, view_img.width() - 3):
-                pc = QColor(view_img.pixel(dx, y + dy))
-                if (abs(pc.red() - accent_hi.red()) < 15 and
-                        abs(pc.green() - accent_hi.green()) < 15 and
-                        abs(pc.blue() - accent_hi.blue()) < 15):
-                    found = True
-                    break
-            if found:
-                break
-        self.assertTrue(found, "No ACCENT_HI frame pixel found on hovered entry")
+        def fake_client(port, path, payload):
+            if path == "/preview":
+                previews.append(payload)
+                img_path = str(Path(os.environ.get("TEMP", "/tmp")) / "test_lut_sel.png")
+                QImage(100, 100, QImage.Format.Format_RGB32).save(img_path)
+                return {"image": img_path, "histogram": {}, "ms": 10.0}
+            return {}
 
-        combo.hidePopup()
+        import tempfile
+        tmpdir = tempfile.mkdtemp(prefix="refgrade_test_lut_")
+        (Path(tmpdir) / "my_lut.cube").write_text(
+            "# Test\nLUT_3D_SIZE 2\n0 0 0\n1 1 1\n", encoding="utf-8")
+
+        QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", tmpdir)
+        img = QImage(400, 300, QImage.Format.Format_RGB32)
+        img.fill(QColor(100, 140, 180))
+        dlg = RefGradeDialog(img, client=fake_client, source={"session": "test", "width": 400, "height": 300})
+        dlg.resize(W, H)
+        dlg.show()
+        _wait(self.app, lambda: dlg.width() >= W - 20)
+        self.app.processEvents()
+
+        dlg._refresh_lut_list(tmpdir)
+        self.app.processEvents()
+        _wait(self.app, lambda: not dlg.view._loading, timeout_ms=2000)
+        previews.clear()
+
+        # Select a LUT via the popup signal
+        lut_path = str(Path(tmpdir) / "my_lut.cube")
+        dlg._lut_on_selected(lut_path)
+        self.app.processEvents()
+
+        # Button text should show the LUT name
+        self.assertEqual(dlg._lut_combo.text(), "my_lut")
+        # A preview with the LUT should have been sent
+        _wait(self.app,
+              lambda: any(p.get("mix", {}).get("lut", "") for p in previews),
+              timeout_ms=3000)
+        lut_previews = [p for p in previews if p.get("mix", {}).get("lut", "")]
+        self.assertGreaterEqual(len(lut_previews), 1)
+        self.assertIn("my_lut", lut_previews[0]["mix"]["lut"])
+
+        dlg.close()
+        dlg.deleteLater()
+        self.app.processEvents()
+
+    def test_select_none_resets(self):
+        """'— none —' Auswahl: Button zurück, LUT aus Mix entfernt."""
+        previews = []
+
+        def fake_client(port, path, payload):
+            if path == "/preview":
+                previews.append(payload)
+                img_path = str(Path(os.environ.get("TEMP", "/tmp")) / "test_none.png")
+                QImage(100, 100, QImage.Format.Format_RGB32).save(img_path)
+                return {"image": img_path, "histogram": {}, "ms": 10.0}
+            return {}
+
+        import tempfile
+        tmpdir = tempfile.mkdtemp(prefix="refgrade_test_lut_")
+        (Path(tmpdir) / "some_lut.cube").write_text(
+            "# Test\nLUT_3D_SIZE 2\n0 0 0\n1 1 1\n", encoding="utf-8")
+
+        QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", tmpdir)
+        img = QImage(400, 300, QImage.Format.Format_RGB32)
+        img.fill(QColor(100, 140, 180))
+        dlg = RefGradeDialog(img, client=fake_client, source={"session": "test", "width": 400, "height": 300})
+        dlg.resize(W, H)
+        dlg.show()
+        _wait(self.app, lambda: dlg.width() >= W - 20)
+        self.app.processEvents()
+
+        dlg._refresh_lut_list(tmpdir)
+        self.app.processEvents()
+        _wait(self.app, lambda: not dlg.view._loading, timeout_ms=2000)
+
+        # First select a LUT
+        dlg._lut_on_selected(str(Path(tmpdir) / "some_lut.cube"))
+        self.app.processEvents()
+        self.assertEqual(dlg._lut_combo.text(), "some_lut")
+
+        # Then select "none"
+        previews.clear()
+        dlg._lut_on_selected("")
+        self.app.processEvents()
+        self.assertEqual(dlg._lut_combo.text(), "— none —")
+        # Preview without LUT
+        _wait(self.app, lambda: len(previews) >= 1, timeout_ms=2000)
+        if previews:
+            self.assertNotIn("some_lut", previews[-1].get("mix", {}).get("lut", ""))
+
+        dlg.close()
+        dlg.deleteLater()
+        self.app.processEvents()
+
+    def test_folder_structure_in_tree(self):
+        """Unterordner erscheinen als expandable Folder-Items im Tree."""
+        import tempfile
+        tmpdir = tempfile.mkdtemp(prefix="refgrade_test_lut_")
+        (Path(tmpdir) / "root_lut.cube").write_text(
+            "# Root\nLUT_3D_SIZE 2\n0 0 0\n1 1 1\n", encoding="utf-8")
+        subdir = Path(tmpdir) / "Cinematic"
+        subdir.mkdir()
+        (subdir / "teal_orange.cube").write_text(
+            "# TO\nLUT_3D_SIZE 2\n0 0 0\n1 1 1\n", encoding="utf-8")
+
+        QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", tmpdir)
+        img = QImage(400, 300, QImage.Format.Format_RGB32)
+        img.fill(QColor(100, 140, 180))
+        dlg = RefGradeDialog(img, source={"session": "test", "width": 400, "height": 300})
+        dlg.resize(W, H)
+        dlg.show()
+        _wait(self.app, lambda: dlg.width() >= W - 20)
+        self.app.processEvents()
+
+        dlg._refresh_lut_list(tmpdir)
+        self.app.processEvents()
+        dlg._lut_toggle_popup()
+        self.app.processEvents()
+
+        model = dlg._lut_popup._model
+        # Rows: "— none —", "root_lut", "Cinematic" (folder with child)
+        self.assertEqual(model.rowCount(), 3)
+        self.assertEqual(model.item(0, 0).text(), "— none —")
+        self.assertEqual(model.item(1, 0).text(), "root_lut")
+        self.assertEqual(model.item(2, 0).text(), "Cinematic")
+        # Folder has one child
+        self.assertEqual(model.item(2, 0).rowCount(), 1)
+        self.assertEqual(model.item(2, 0).child(0, 0).text(), "teal_orange")
+        # Folder is not selectable
+        self.assertFalse(
+            bool(model.item(2, 0).flags() & Qt.ItemFlag.ItemIsSelectable))
+
+        dlg._lut_popup.hide()
         dlg.close()
         dlg.deleteLater()
         self.app.processEvents()

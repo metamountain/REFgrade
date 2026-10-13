@@ -1,15 +1,16 @@
-"""LutMixin: LUT section building, folder, combo, apply (K26)."""
+"""LutMixin: LUT section building, folder, tree-popup, apply (K26)."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import QRect, QSize, Qt
-from PyQt6.QtGui import QColor, QPen
-from PyQt6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
-                             QPushButton, QSizePolicy, QStyledItemDelegate,
-                             QVBoxLayout, QWidget)
+from PyQt6.QtCore import QRect, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QPen, QStandardItem, QStandardItemModel
+from PyQt6.QtWidgets import (QAbstractItemView, QFileDialog, QHBoxLayout,
+                             QLabel, QPushButton, QSizePolicy, QStyle,
+                             QStyledItemDelegate, QTreeView, QVBoxLayout,
+                             QWidget)
 
 from . import config, scale, style
 from .widgets import SectionHeader, SliderRow, small_button
@@ -20,34 +21,134 @@ _LUT_HOVER_MS = 120
 
 
 class _LutDelegate(QStyledItemDelegate):
-    """Combo view delegate: 2 px frame on the hovered entry."""
+    """Tree view delegate: 2 px accent frame on hover, left bar on selection."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._hover_row: int = -1
+        self._hover_idx = None
+        self._hover_row: int = -1  # kept for test compat
 
-    def set_hover(self, row: int) -> None:
-        """Set the hovered row and repaint the view."""
-        if row == self._hover_row:
+    def set_hover(self, index) -> None:
+        if index == self._hover_idx:
             return
-        self._hover_row = row
+        self._hover_idx = index
+        self._hover_row = index.row() if index and index.isValid() else -1
         view = self.parent()
         if view is not None and hasattr(view, "viewport"):
             view.viewport().update()
 
     def paint(self, painter, option, index) -> None:  # noqa: N802
         super().paint(painter, option, index)
-        if index.row() == self._hover_row:
+        if option.state & QStyle.ItemFlag.Item_IsSelected:
+            painter.fillRect(option.rect.left(), option.rect.top(), 3,
+                             option.rect.height(), QColor(style.ACCENT_HI))
+        if index == self._hover_idx:
             rect = option.rect.adjusted(1, 1, -1, -1)
             painter.setPen(QPen(QColor(style.ACCENT_HI), 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(rect)
 
+
+class _LutTreePopup(QWidget):
+    """Popup with a QTreeView for navigating LUT folders."""
+
+    lut_selected = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._model = QStandardItemModel(self)
+        self._model.setHorizontalHeaderLabels(["LUT"])
+        self._tree = QTreeView(self)
+        self._tree.setModel(self._model)
+        self._tree.setHeaderHidden(True)
+        self._tree.setRootIsDecorated(True)
+        self._tree.setIndentation(14)
+        self._tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self._tree.clicked.connect(self._on_clicked)
+        self._delegate = _LutDelegate(self._tree)
+        self._tree.setItemDelegate(self._delegate)
+        self._tree.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self._tree.installEventFilter(self)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.addWidget(self._tree)
+        self.setMinimumWidth(240)
+
+    def _on_clicked(self, index) -> None:
+        data = self._model.data(index, Qt.ItemDataRole.UserRole)
+        if data and data != "__FOLDER__":
+            self.lut_selected.emit(data)
+            self.hide()
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if obj is self._tree:
+            if event.type() == event.Type.MouseMove:
+                idx = self._tree.indexAt(event.position().toPoint())
+                self._delegate.set_hover(idx if idx.isValid() else None)
+            elif event.type() == event.Type.Leave:
+                self._delegate.set_hover(None)
+        return super().eventFilter(obj, event)
+
+    def populate(self, folder: str) -> None:
+        self._model.removeRows(0, self._model.rowCount())
+        none_item = QStandardItem("— none —")
+        none_item.setData("", Qt.ItemDataRole.UserRole)
+        self._model.appendRow(none_item)
+        try:
+            root = Path(folder)
+            files = sorted(
+                (p for p in root.iterdir()
+                 if p.is_file() and p.suffix.lower() == ".cube"),
+                key=lambda p: p.name.lower(),
+            )
+            for p in files:
+                item = QStandardItem(p.stem)
+                item.setData(str(p), Qt.ItemDataRole.UserRole)
+                self._model.appendRow(item)
+            subdirs = sorted(
+                (p for p in root.iterdir() if p.is_dir()),
+                key=lambda p: p.name.lower(),
+            )
+            for d in subdirs:
+                folder_item = QStandardItem(d.name)
+                folder_item.setEditable(False)
+                folder_item.setData("__FOLDER__", Qt.ItemDataRole.UserRole)
+                folder_item.setFlags(
+                    folder_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                self._model.appendRow(folder_item)
+                sub_files = sorted(
+                    (p for p in d.iterdir()
+                     if p.is_file() and p.suffix.lower() == ".cube"),
+                    key=lambda p: p.name.lower(),
+                )
+                for p in sub_files:
+                    file_item = QStandardItem(p.stem)
+                    file_item.setData(str(p), Qt.ItemDataRole.UserRole)
+                    folder_item.appendRow(file_item)
+        except OSError:
+            pass
+        self._tree.expandAll()
+
+    def set_current(self, path: str) -> None:
+        def find(idx):
+            for row in range(self._model.rowCount(idx)):
+                child = self._model.index(row, 0, idx)
+                if self._model.data(child, Qt.ItemDataRole.UserRole) == path:
+                    self._tree.setCurrentIndex(child)
+                    self._tree.scrollTo(child)
+                    return True
+                if find(child):
+                    return True
+            return False
+        find(self._model.index(0, 0, Qt.Index(-1, -1)))
+
+
 class LutMixin:
-    """Mixin for RefGradeDialog: LUT section, folder, combo, apply."""
+    """Mixin for RefGradeDialog: LUT section, folder, tree-popup, apply."""
 
     def _build_lut_section(self) -> QWidget:
-        """Section "LUT": header + content (Amount, FOLDER…, SAVE, combo, folder label)."""
         w = QWidget()
         w.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         box = QVBoxLayout(w)
@@ -84,14 +185,15 @@ class LutMixin:
         self._lut_save_btn.setToolTip("Save the current grading as a .cube LUT")
         self._lut_save_btn.clicked.connect(self._do_lut)
         row.addWidget(self._lut_save_btn)
-        self._lut_combo = QComboBox()
+        # Tree-popup combo: button opens a QTreeView popup
+        self._lut_combo = QPushButton("— none —")
         self._lut_combo.setObjectName("lut_combo")
         self._lut_combo.setFont(style.font("base"))
         self._lut_combo.setProperty("font_role", "base")
         self._lut_combo.setFixedHeight(scale.button_h(style.current_s()))
-        self._lut_combo.currentIndexChanged.connect(self._lut_combo_changed)
+        self._lut_combo.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._lut_combo.clicked.connect(self._lut_toggle_popup)
         row.addWidget(self._lut_combo, 1)
-        # K25i: folder name as italic text in the same row after the dropdown
         self._lut_folder_label = QLabel("")
         _f = style.font("small")
         _f.setItalic(True)
@@ -107,186 +209,40 @@ class LutMixin:
         self._lut_hover_path: str | None = None
         self._lut_hover_active = False
         self._lut_view_ready = False
+        self._lut_popup: _LutTreePopup | None = None
+        self._lut_current_path: str = ""
         return w
 
-
-    def _load_lut_folder(self) -> None:
-        """Load the LUT folder from QSettings (or default) and fill the combo."""
-        folder = self._settings.value("lut_folder", "")
-        if not folder or not Path(folder).is_dir():
-            # default (user 2026-10-08): Krita's resource folder \luts, else the project's
-            krita_luts = config.lut_dir(Path(os.environ.get("LOCALAPPDATA", "")) / "kritarc")
-            folder = str(krita_luts if krita_luts.is_dir() else config.LUTS)
-        self._refresh_lut_list(folder)
-
-
-    def _refresh_lut_list(self, folder: str) -> None:
-        """Fill the combo with — none —, .cube files in `folder`, then each direct
-        subfolder as a non-selectable uppercase header followed by its .cube files."""
-        self._lut_combo.blockSignals(True)
-        self._lut_combo.clear()
-        self._lut_combo.addItem("— none —", "")
-        try:
-            root = Path(folder)
-            files = sorted(
-                (p for p in root.iterdir()
-                 if p.is_file() and p.suffix.lower() == ".cube"),
-                key=lambda p: p.name.lower(),
-            )
-            for p in files:
-                self._lut_combo.addItem(p.stem, str(p))
-            # Subfolders as categories
-            subdirs = sorted(
-                (p for p in root.iterdir() if p.is_dir()),
-                key=lambda p: p.name.lower(),
-            )
-            for d in subdirs:
-                header_text = f"— {d.name.upper()} —"
-                self._lut_combo.addItem(header_text, "__HEADER__")
-                sub_files = sorted(
-                    (p for p in d.iterdir()
-                     if p.is_file() and p.suffix.lower() == ".cube"),
-                    key=lambda p: p.name.lower(),
-                )
-                for p in sub_files:
-                    self._lut_combo.addItem(p.stem, str(p))
-        except OSError:
-            pass
-        self._lut_combo.setCurrentIndex(0)
-        self._lut_combo.blockSignals(False)
-        self._lut_folder_label.setText(f"in: {Path(folder).name}")
-        self._settings.setValue("lut_folder", folder)
-        self._lut_dim_state()
-        if self._lut_view_ready:            # K27e: view is set up in showEvent (offscreen-safe)
-            self._setup_lut_combo_view()
-
-
-    def _lut_dim_state(self) -> None:
-        """Dim combo and button when the LUT section is OFF."""
-        on = self._lut_header.is_on()
-        self._lut_combo.setProperty("dim", not on)
-        self._lut_folder_btn.setProperty("dim", not on)
-        self._lut_save_btn.setProperty("dim", not on)
-        self._lut_combo.style().unpolish(self._lut_combo)
-        self._lut_combo.style().polish(self._lut_combo)
-        self._lut_folder_btn.style().unpolish(self._lut_folder_btn)
-        self._lut_folder_btn.style().polish(self._lut_folder_btn)
-        self._lut_save_btn.style().unpolish(self._lut_save_btn)
-        self._lut_save_btn.style().polish(self._lut_save_btn)
-
-
-    def _setup_lut_combo_view(self) -> None:
-        """Install mouse-tracking, hover-preview, and delegate on the combo's popup view.
-        Deferred to showEvent: combo.view() blocks during __init__ in offscreen mode."""
-        if self._lut_view_ready:
+    def _lut_toggle_popup(self) -> None:
+        """Open or close the LUT tree popup."""
+        if self._lut_popup is not None and self._lut_popup.isVisible():
+            self._lut_popup.hide()
             return
-        self._lut_view_ready = True
-        view = self._lut_combo.view()
-        if view is None:
-            return
-        view.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-        view.installEventFilter(self)
-        if not hasattr(self, "_lut_delegate"):
-            self._lut_delegate = _LutDelegate(view)
-        view.setItemDelegate(self._lut_delegate)
+        if self._lut_popup is None:
+            self._lut_popup = _LutTreePopup(self)
+            self._lut_popup.lut_selected.connect(self._lut_on_selected)
+        folder = self._settings.value("lut_folder", "") or str(config.LUTS)
+        self._lut_popup.populate(folder)
+        if self._lut_current_path:
+            self._lut_popup.set_current(self._lut_current_path)
+        btn_geo = self._lut_combo.geometry()
+        popup_w = max(240, self._lut_combo.width())
+        self._lut_popup.setFixedWidth(popup_w)
+        self._lut_popup.adjustSize()
+        pos = self._lut_combo.mapToGlobal(self._lut_combo.rect().bottomLeft())
+        self._lut_popup.move(pos.x(), pos.y() + 2)
+        self._lut_popup.show()
+        self._lut_popup.raise_()
 
-
-    def _lut_view_hover(self, index: int) -> None:
-        """Hover over a LUT entry: start 120 ms debounce; on timeout send a preview with
-        that LUT. Headers and — none — are ignored."""
-        # Update the delegate frame immediately
-        if hasattr(self, "_lut_delegate"):
-            self._lut_delegate.set_hover(index)
-        if self._client is None or self._session_id is None:
-            return
-        if index < 0 or index >= self._lut_combo.count():
-            return
-        data = self._lut_combo.itemData(index)
-        if data is None or data == "" or data == "__HEADER__":
-            self._lut_hover_pending = -1
-            return
-        if data == self._lut_hover_path:
-            return
-        # Debounce: store the pending index, restart the timer
-        self._lut_hover_pending = index
-        self._lut_hover_timer.start(_LUT_HOVER_MS)
-
-    def _lut_hover_timeout(self) -> None:
-        """Timer fired: send the preview for the pending LUT entry."""
-        idx = self._lut_hover_pending
-        self._lut_hover_pending = -1
-        if idx < 0 or idx >= self._lut_combo.count():
-            return
-        data = self._lut_combo.itemData(idx)
-        if data is None or data == "" or data == "__HEADER__":
-            return
-        if data == self._lut_hover_path:
-            return
-        self._lut_hover_path = data
-        self._lut_hover_active = True
-        m = self.mode()
-        m["weights"]["lut"] = m["weights"].get("lut", 1.0)
-        m["lut"] = data
-        payload = {
-            "session": self._session_id,
-            "references": self._references(),
-            "method": self._method(),
-            "values": self._values(),
-            "max_side": self._max_side(),
-            "mix": m,
-        }
-        self._run_task("/preview", payload, self._next_req())
-
-
-    def _lut_view_leave(self) -> None:
-        """Leave the combo popup without selecting: restore the previous grading."""
-        self._lut_hover_timer.stop()
-        self._lut_hover_pending = -1
-        if hasattr(self, "_lut_delegate"):
-            self._lut_delegate.set_hover(-1)
-        if self._lut_hover_active:
-            self._lut_hover_path = None
-            self._lut_hover_active = False
-            if self._client is not None:
-                self._schedule_preview()
-
-
-    def _lut_view_wheel(self, event) -> None:
-        """Wheel on the combo popup: move selection, skipping headers."""
-        delta = event.angleDelta().y()
-        if delta == 0:
-            return
-        step = 1 if delta > 0 else -1
-        cur = self._lut_combo.currentIndex()
-        n = self._lut_combo.count()
-        idx = cur
-        for _ in range(n):
-            idx += step
-            if idx < 0 or idx >= n:
-                break
-            if self._lut_combo.itemData(idx) != "__HEADER__":
-                self._lut_combo.setCurrentIndex(idx)
-                break
-
-
-    def _lut_folder_clicked(self) -> None:
-        """FOLDER…: call the injected choose_folder, refresh the list."""
-        start = self._settings.value("lut_folder", "") or str(config.LUTS)
-        if self._choose_folder is not None:
-            folder = self._choose_folder(start)
-        else:
-            folder = QFileDialog.getExistingDirectory(self, "LUT folder", start)
-        if folder:
-            self._refresh_lut_list(folder)
-            self._lut_combo.setCurrentIndex(0)
-
-
-    def _lut_combo_changed(self, index: int) -> None:
-        """Combo selection changed: ON + preview for a LUT, OFF for — none —."""
+    def _lut_on_selected(self, path: str) -> None:
+        """A LUT was selected in the tree popup."""
+        self._lut_current_path = path
+        name = Path(path).stem if path else "— none —"
+        self._lut_combo.setText(name)
         self._lut_hover_path = None
         self._lut_hover_active = False
         header = self._lut_header
-        if index > 0:
+        if path:
             if not header.is_on():
                 header.on.setChecked(True)
         else:
@@ -298,9 +254,69 @@ class LutMixin:
         else:
             self._show_mode()
 
+    def _load_lut_folder(self) -> None:
+        folder = self._settings.value("lut_folder", "")
+        if not folder or not Path(folder).is_dir():
+            krita_luts = config.lut_dir(Path(os.environ.get("LOCALAPPDATA", "")) / "kritarc")
+            folder = str(krita_luts if krita_luts.is_dir() else config.LUTS)
+        self._refresh_lut_list(folder)
+
+    def _refresh_lut_list(self, folder: str) -> None:
+        """Update the folder label and settings (popup is populated on open)."""
+        self._lut_folder_label.setText(f"in: {Path(folder).name}")
+        self._settings.setValue("lut_folder", folder)
+        self._lut_dim_state()
+
+    def _lut_data_at(self, row: int) -> str | None:
+        """Compat: return the current path (flat model removed)."""
+        return self._lut_current_path or None
+
+    def _lut_dim_state(self) -> None:
+        on = self._lut_header.is_on()
+        self._lut_combo.setProperty("dim", not on)
+        self._lut_folder_btn.setProperty("dim", not on)
+        self._lut_save_btn.setProperty("dim", not on)
+        self._lut_combo.style().unpolish(self._lut_combo)
+        self._lut_combo.style().polish(self._lut_combo)
+        self._lut_folder_btn.style().unpolish(self._lut_folder_btn)
+        self._lut_folder_btn.style().polish(self._lut_folder_btn)
+        self._lut_save_btn.style().unpolish(self._lut_save_btn)
+        self._lut_save_btn.style().polish(self._lut_save_btn)
+
+    def _setup_lut_combo_view(self) -> None:
+        """No-op: popup is created lazily on first click."""
+        self._lut_view_ready = True
+
+    def _lut_view_hover(self, index) -> None:
+        """Compat stub: hover is handled inside the popup."""
+        pass
+
+    def _lut_hover_timeout(self) -> None:
+        """Compat stub: hover preview is handled inside the popup."""
+        pass
+
+    def _lut_view_leave(self) -> None:
+        """Popup closed without selection: restore previous grading."""
+        if self._lut_hover_active:
+            self._lut_hover_path = None
+            self._lut_hover_active = False
+            if self._client is not None:
+                self._schedule_preview()
+
+    def _lut_folder_clicked(self) -> None:
+        start = self._settings.value("lut_folder", "") or str(config.LUTS)
+        if self._choose_folder is not None:
+            folder = self._choose_folder(start)
+        else:
+            folder = QFileDialog.getExistingDirectory(self, "LUT folder", start)
+        if folder:
+            self._refresh_lut_list(folder)
+
+    def _lut_combo_changed(self, index: int) -> None:
+        """Compat stub: selection is handled by _lut_on_selected."""
+        pass
 
     def _do_lut(self) -> None:
-        """SAVE: export the current grading as a .cube LUT in <LUT folder>/RefGrade."""
         if self._client is None or self._session_id is None or self._save_lut is None:
             return
         name = self._first_ref_name()
@@ -309,13 +325,14 @@ class LutMixin:
         suffix = f" ({', '.join(n.capitalize() for n in excluded)} not included)" if excluded else ""
         lut_folder = self._settings.value("lut_folder", "") or str(config.LUTS)
         save_dir = str(Path(lut_folder) / "RefGrade")
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         path = self._save_lut(save_dir, f"{name}.cube{suffix}")
         if path is None:
             return
         self._lut_dir_last = str(Path(path).parent)
         vals = self._values()
         for n in ("clarity", "texture", "dehaze"):
-            vals[n] = 0.0  # spatial effects are not in the LUT
+            vals[n] = 0.0
         payload = {
             "session": self._session_id,
             "references": self._references(),
@@ -327,12 +344,8 @@ class LutMixin:
         req_id = self._next_req()
         self._run_task("/cube", payload, req_id)
 
-    # ── OK ────────────────────────────────────────────────────────────────────
-
     def _apply_cube(self, result: dict) -> None:
-        """Handle /cube response: re-read the LUT list (new entry appears, not selected)."""
         fname = Path(result["path"]).name
         self._set_status(f"LUT · {fname}")
         lut_folder = self._settings.value("lut_folder", "") or str(config.LUTS)
         self._refresh_lut_list(lut_folder)
-

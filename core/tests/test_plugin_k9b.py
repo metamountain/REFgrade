@@ -462,11 +462,12 @@ class TestHSL(K9bTestBase):
         self.app.processEvents()
         # Set Blue Sat to -0.5
         blue_sat = self.dialog._hsl_sliders["blue"][1]
+        initial = self.fake.count("/preview")
         blue_sat.set_value(-0.5)
         self.app.processEvents()
         # Trigger preview
         self.dialog._schedule_preview()
-        _wait(self.app, lambda: self.fake.count("/preview") > 0, 2000)
+        _wait(self.app, lambda: self.fake.count("/preview") > initial, 2000)
         payload = self.fake.last("/preview")
         self.assertIsNotNone(payload)
         self.assertAlmostEqual(payload["values"]["sel_blue_sat"], -0.5, places=4)
@@ -548,10 +549,11 @@ class TestVibrance(K9bTestBase):
         self.app.processEvents()
         # Find the vibrance slider
         vibrance = next(r for r in self.dialog.sections["color"][1] if r.name == "vibrance")
+        initial = self.fake.count("/preview")
         vibrance.set_value(0.5)
         self.app.processEvents()
         self.dialog._schedule_preview()
-        _wait(self.app, lambda: self.fake.count("/preview") > 0, 2000)
+        _wait(self.app, lambda: self.fake.count("/preview") > initial, 2000)
         payload = self.fake.last("/preview")
         self.assertIsNotNone(payload)
         self.assertAlmostEqual(payload["values"]["vibrance"], 0.5, places=4)

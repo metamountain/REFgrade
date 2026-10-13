@@ -496,8 +496,8 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         m: dict = {"solo": None, "weights": weights, "master": self.master.value(),
                    "order": list(self._chain_order)}
         lut_header = self.sections.get("lut", (None, None))[0]
-        if lut_header is not None and lut_header.is_on() and self._lut_combo.currentIndex() > 0:
-            m["lut"] = self._lut_combo.currentData()
+        if lut_header is not None and lut_header.is_on() and self._lut_current_path:
+            m["lut"] = self._lut_current_path
         # Curves: include when ON and non-identity
         curves_h = self.sections.get("curves", (None, None))[0]
         if curves_h is not None and curves_h.is_on():
@@ -676,17 +676,6 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
                 self._tile_hover(obj)
             elif event.type() == QEvent.Type.Leave:
                 self._tile_leave()
-        elif obj is self._lut_combo.view():
-            # LUT combo popup: hover preview + wheel skip headers
-            if event.type() == QEvent.Type.MouseMove:
-                idx = self._lut_combo.view().indexAt(event.position().toPoint())
-                if idx.isValid():
-                    self._lut_view_hover(idx.row())
-            elif event.type() == QEvent.Type.Leave:
-                self._lut_view_leave()
-            elif event.type() == QEvent.Type.Wheel:
-                self._lut_view_wheel(event)
-                return True
         return super().eventFilter(obj, event)
 
 

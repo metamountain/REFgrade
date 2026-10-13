@@ -129,8 +129,9 @@ class WorkerMixin:
 
 
     def _schedule_preview(self) -> None:
-        """Debounce: restart the 30 ms timer; fire /preview when it elapses."""
-        self._debounce_timer.start()
+        """Throttle: fire /preview at most every 30 ms (timer not restarted while active)."""
+        if not self._debounce_timer.isActive():
+            self._debounce_timer.start()
 
 
     def _visible_scopes(self) -> list[str]:
