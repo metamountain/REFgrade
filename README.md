@@ -7,7 +7,7 @@
 Transfers the light and color mood of a reference image onto your image in Krita.
 Adjust the result with grading sliders, apply it as a new layer, or export as a 3D LUT (.cube).
 
-<a href="docs/screenshot.jpg"><img src="docs/screenshot.jpg" width="640" alt="REFgrade dialog: grading controls, colour wheels and scopes beside the graded image"></a>
+<a href="docs/screenshot.jpg"><img src="docs/screenshot.jpg" width="100%" alt="REFgrade dialog: grading controls, colour wheels and scopes beside the graded image"></a>
 
 ## Prerequisites
 
