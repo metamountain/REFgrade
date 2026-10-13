@@ -109,23 +109,27 @@ class RefGradeExtension(Extension):
         def on_ok(raw_path: str, layer_name: str, clarity_info: dict | None = None) -> None:
             krita_bridge.write_layer(source, Path(raw_path), layer_name, clarity_info)
 
-        def on_update() -> None:
-            """UPDATE: re-read the active layer and load a new session."""
+        def on_update() -> bool:
+            """UPDATE: re-read the active layer and load a new session. True on success."""
             nonlocal source
             tmp = config.temp_dir()
             new_source = krita_bridge.read_active(tmp)
             if isinstance(new_source, str):
-                return
+                dlg._set_status(new_source)
+                return False
             try:
                 resp = worker_client.call(self._port, "/load", new_source)
-            except worker_client.WorkerError:
-                return
+            except worker_client.WorkerError as e:
+                dlg._set_status(f"Worker: {e}")
+                return False
             new_source["session"] = resp["session"]
             source = new_source
             dlg._session_id = resp["session"]
             dlg._source = new_source
             dlg._orig_w = new_source.get("width", 0)
             dlg._orig_h = new_source.get("height", 0)
+            dlg._set_status(f"Updated: {new_source.get('width', '?')}x{new_source.get('height', '?')}")
+            return True
 
         # 6. Open dialog
         dlg = RefGradeDialog(

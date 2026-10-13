@@ -12,6 +12,23 @@ _HERE: Path = Path(__file__).resolve().parent
 _BUNDLED: bool = (_HERE / "core").is_dir()
 ROOT: Path = _HERE if _BUNDLED else _HERE.parents[1]
 CORE: Path = ROOT / "core"
+
+# Debug: Pfad-Auflösung beim Modul-Load protokollieren (nur bei Problemen relevant).
+try:
+    from pathlib import Path as _P
+    _dbg = _P(os.environ.get("TEMP", "/tmp")) / "refgrade_debug.txt"
+    _dbg.write_text(
+        f"HERE={_HERE}\n"
+        f"BUNDLED={_BUNDLED}\n"
+        f"ROOT={ROOT}\n"
+        f"CORE={CORE}\n"
+        f"exists={CORE.exists()}\n"
+        f"is_dir={CORE.is_dir()}\n"
+        f"listdir={sorted(p.name for p in _HERE.iterdir()) if _HERE.is_dir() else 'N/A'}\n",
+        encoding="utf-8",
+    )
+except Exception:
+    pass
 POOL: Path = ROOT / "bench" / "pool"   # nur im Repo vorhanden; fehlend ist unkritisch
 LUTS: Path = (Path(os.environ.get("APPDATA", "")) / "krita" / "luts") if _BUNDLED else ROOT / "luts"
 PORT: int = 47123

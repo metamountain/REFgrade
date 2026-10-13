@@ -544,7 +544,9 @@ class WorkerMixin:
     def _do_update(self) -> None:
         """UPDATE: re-read the source layer and recompute the preview."""
         if self._on_update is not None:
-            self._on_update()
+            ok = self._on_update()
+            if ok is False:
+                return
         if self._client is not None and self._session_id is not None:
             self._schedule_preview()
 
