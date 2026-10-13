@@ -1,0 +1,28 @@
+# Positivliste: nur der eigene Code geht ins Repository.
+# Daten mit fremder oder Forschungs-Lizenz (FiveK, Vorlagen, LUT-Pakete, Testbilder) bleiben draußen;
+# sie werden bei Bedarf von ihrer Originalquelle geladen (geplant: install.py --assets).
+/*
+!/.gitignore
+!/LICENSE
+!/README.md
+!/KONZEPT.md
+!/install.py
+!/REFgrade.bat
+!/plugin/
+!/core/
+!/standalone/
+
+__pycache__/
+*.pyc
+.pytest_cache/
+/core/reports/
+/core/debug_log.md
+/core/crash.log
+# interne Entwicklungswerkzeuge (lokale Pfade, Qwen-Protokolle)
+/core/tools/pair_lut_proto.py
+/core/tools/ui_element_review.py
+/core/tools/ui_element_shots.py
+/core/tools/ui_shots_target.py
+/core/tools/qwen_runlog.py
+/core/tools/qwen_runs_report.py
+/core/tools/ifscale_local.py

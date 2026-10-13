@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=ref_grade
+X-Python-2-Compatible=false
+Name=RefGrade
+Comment=Grade the active layer after a reference image

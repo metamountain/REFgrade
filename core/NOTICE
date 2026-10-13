@@ -1,0 +1,7 @@
+# Third-Party Acknowledgements
+
+- EasyColorCorrector (MIT) — referenced for design ideas in color grading.
+  Not imported or copied.
+- EasyColorCorrector FILM_STOCKS data (MIT) — film stock parameters (temperature,
+  tint, contrast, saturation, gamma) adapted as `film_*` presets in
+  `refgrade/presets.py`. Data only, no code copied.

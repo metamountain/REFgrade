@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+  <Actions category="Scripts">
+    <text>RefGrade</text>
+    <Action name="ref_grade_open">
+      <icon></icon>
+      <text>RefGrade</text>
+      <whatsThis></whatsThis>
+      <toolTip>Grade the active layer after a reference image</toolTip>
+      <iconText>RefGrade</iconText>
+      <activationFlags>10000</activationFlags>
+      <activationConditions>0</activationConditions>
+      <shortcut></shortcut>
+      <isCheckable>false</isCheckable>
+      <statusTip></statusTip>
+    </Action>
+  </Actions>
+</ActionCollection>
