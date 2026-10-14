@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from PyQt6.QtCore import QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPen, QStandardItem, QStandardItemModel
+from PyQt6.QtGui import QColor, QPen, QModelIndex, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (QAbstractItemView, QFileDialog, QHBoxLayout,
                              QLabel, QPushButton, QSizePolicy, QStyle,
                              QStyledItemDelegate, QTreeView, QVBoxLayout,
@@ -142,7 +142,7 @@ class _LutTreePopup(QWidget):
                 if find(child):
                     return True
             return False
-        find(self._model.index(0, 0, Qt.Index(-1, -1)))
+        find(self._model.index(0, 0, QModelIndex()))
 
 
 class LutMixin:
