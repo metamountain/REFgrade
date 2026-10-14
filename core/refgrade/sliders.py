@@ -57,7 +57,7 @@ def _sel() -> list[Slider]:
 
 def _color_replace() -> list[Slider]:
     out: list[Slider] = []
-    for i in range(5):
+    for i in range(8):
         out.append(Slider(f"cr_{i}_src_hue", "color_replace", 0.0, 360.0, 0.0, 1.0))
         out.append(Slider(f"cr_{i}_src_sat", "color_replace", 0.0, 1.0, 1.0, 0.01))
         out.append(Slider(f"cr_{i}_tgt_hue", "color_replace", 0.0, 360.0, 0.0, 1.0))

@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPen, QModelIndex, QStandardItem, QStandardItemModel
+from PyQt6.QtCore import QModelIndex, QRect, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QPen, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (QAbstractItemView, QFileDialog, QHBoxLayout,
                              QLabel, QPushButton, QSizePolicy, QStyle,
                              QStyledItemDelegate, QTreeView, QVBoxLayout,

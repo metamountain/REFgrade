@@ -11,7 +11,7 @@ import torch
 
 from .color import rgb_to_hsv as _rgb_to_hsv, hsv_to_rgb as _hsv_to_rgb
 
-MAX_INSTANCES = 5
+MAX_INSTANCES = 8
 
 
 def _cr_names(i: int) -> list[str]:

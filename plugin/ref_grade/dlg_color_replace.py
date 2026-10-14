@@ -1,41 +1,41 @@
-"""Color Replace section: multiple instances, each with 2 color wheels (75% size) + pipette + reset + 2 sliders."""
+"""Color Replace section: multiple instances in a 2-column grid, each with 2 small wheels + pipette + reset + 2 sliders."""
 
 from __future__ import annotations
 
 import math
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QPushButton,
+                             QVBoxLayout, QWidget)
 
 from . import scale, style
 from .widgets import ColorWheel, SectionHeader, SliderRow, small_button
 
-MAX_INSTANCES = 5
+MAX_INSTANCES = 8
 
 
 class _CRInstance(QWidget):
-    """One Color Replace instance: 2 wheels (75%), pipette, reset, intensity, range."""
+    """One Color Replace instance: 2 small wheels, pipette, reset, intensity, range."""
 
     changed = pyqtSignal()
     pipette_requested = pyqtSignal(int, str)  # instance_index, "src"|"tgt"
-
     removed = pyqtSignal(int)  # instance index
 
     def __init__(self, index: int, parent: QWidget | None = None):
         super().__init__(parent)
         self.index = index
         box = QVBoxLayout(self)
-        box.setContentsMargins(0, 0, 0, 2)
+        box.setContentsMargins(2, 2, 2, 2)
         box.setSpacing(1)
 
         _rh = scale.row_h(style.current_s())
-        # 75% of the WHEELS section wheel size
-        wheel_size = round(0.75 * style.current_s())
-        btn_size = round(_rh * 1.3)
+        # Half-size wheels so 2 instances (4 wheels) fit in one row
+        wheel_size = round(0.375 * style.current_s())
+        btn_size = round(_rh * 0.9)
 
-        # Row 1: two wheels (each with centered label above) + pipette + reset
+        # Row 1: [SRC label+wheel] [TGT label+wheel] [buttons]
         row1 = QHBoxLayout()
-        row1.setSpacing(6)
+        row1.setSpacing(4)
 
         src_col = QVBoxLayout()
         src_col.setSpacing(0)
@@ -67,7 +67,7 @@ class _CRInstance(QWidget):
 
         # Buttons: pipette SRC + pipette TGT + reset + remove
         btn_col = QVBoxLayout()
-        btn_col.setSpacing(2)
+        btn_col.setSpacing(1)
         self._pipette_src = small_button("◉", tip="Pick SOURCE color from image")
         self._pipette_src.setFixedSize(btn_size, btn_size)
         self._pipette_src.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -90,7 +90,7 @@ class _CRInstance(QWidget):
         self._remove_btn.setFixedSize(btn_size, btn_size)
         self._remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._remove_btn.clicked.connect(lambda: self.removed.emit(self.index))
-        self._remove_btn.setVisible(index > 0)  # first instance cannot be removed
+        self._remove_btn.setVisible(index > 0)
         btn_col.addWidget(self._remove_btn)
         btn_col.addStretch(1)
 
@@ -101,10 +101,9 @@ class _CRInstance(QWidget):
         # Row 2: intensity + range sliders (new instances start inactive)
         default_int = 1.0 if index == 0 else 0.0
         self.intensity = SliderRow(
-            f"cr_{index}_intensity", 0.0, 1.0, default_int, 0.01, "Intensity", label_width=70)
+            f"cr_{index}_intensity", 0.0, 1.0, default_int, 0.01, "Intensity", label_width=50)
         self.range = SliderRow(
-            f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=70)
-        self.range.setToolTip("Falloff: how many degrees of neighboring hues are affected")
+            f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=50)
         box.addWidget(self.intensity)
         box.addWidget(self.range)
 
@@ -192,7 +191,7 @@ def _rgb_to_hue_sat(r: float, g: float, b: float) -> tuple[float, float]:
 
 
 class ColorReplaceSection(QWidget):
-    """The full Color Replace chapter: header + N instances + Add button."""
+    """The full Color Replace chapter: header + grid of instances (2 per row) + Add button."""
 
     changed = pyqtSignal()
     pipette_requested = pyqtSignal(int, str)  # instance_index, "src"|"tgt"
@@ -211,12 +210,17 @@ class ColorReplaceSection(QWidget):
         cbox.setContentsMargins(0, 0, 0, 0)
         cbox.setSpacing(4)
 
+        # Grid: 2 instances per row
+        self._grid = QGridLayout()
+        self._grid.setSpacing(4)
+        cbox.addLayout(self._grid)
+
         self._instances: list[_CRInstance] = []
         self._add_instance()
 
         self._add_btn = QPushButton("+ Add color")
         self._add_btn.setFixedHeight(scale.row_h(style.current_s()))
-        self._add_btn.setToolTip("Add another color replacement instance (max 5)")
+        self._add_btn.setToolTip("Add another color replacement instance (max 8)")
         self._add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._add_btn.clicked.connect(self._on_add)
         cbox.addWidget(self._add_btn)
@@ -227,28 +231,35 @@ class ColorReplaceSection(QWidget):
         self.header.switched.connect(self._on_switched)
         self.header.reset.connect(self._on_reset)
 
+    def _grid_pos(self, idx: int) -> tuple[int, int]:
+        """Instance index → (row, col) in the 2-column grid."""
+        return divmod(idx, 2)
+
     def _add_instance(self) -> None:
         if len(self._instances) >= MAX_INSTANCES:
             return
-        inst = _CRInstance(len(self._instances), self._content)
+        idx = len(self._instances)
+        inst = _CRInstance(idx, self._content)
         inst.changed.connect(self.changed)
         inst.pipette_requested.connect(self.pipette_requested)
         inst.removed.connect(self._remove_instance)
-        cbox = self._content.layout()
-        cbox.insertWidget(cbox.count() - 1, inst)
+        row, col = self._grid_pos(idx)
+        self._grid.addWidget(inst, row, col)
         self._instances.append(inst)
 
     def _remove_instance(self, index: int) -> None:
         if index <= 0 or index >= len(self._instances):
             return
         inst = self._instances[index]
-        cbox = self._content.layout()
-        cbox.removeWidget(inst)
+        self._grid.removeWidget(inst)
         inst.deleteLater()
         del self._instances[index]
-        # Re-index remaining instances
+        # Re-index and re-layout remaining instances
         for i, remaining in enumerate(self._instances):
             remaining.index = i
+            row, col = self._grid_pos(i)
+            self._grid.removeItem(remaining)
+            self._grid.addWidget(remaining, row, col)
         self.changed.emit()
 
     def _on_add(self) -> None:
