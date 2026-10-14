@@ -26,13 +26,13 @@ class _CRInstance(QWidget):
         self.index = index
         box = QVBoxLayout(self)
         box.setContentsMargins(2, 2, 2, 2)
-        box.setSpacing(1)
+        box.setSpacing(2)
 
-        _rh = scale.row_h(style.current_s())
-        wheel_size = round(0.70 * style.current_s())
-        btn_size = round(_rh * 0.9)
+        _s = style.current_s()
+        wheel_size = round(0.70 * _s)
+        btn_h = scale.button_h(_s)
 
-        # Row 1: [SRC label+wheel] [TGT label+wheel] [buttons]
+        # Row 1: [SRC wheel] [TGT wheel] [Sample Source] [Sample Target] [↺] [×]
         row1 = QHBoxLayout()
         row1.setSpacing(4)
 
@@ -64,47 +64,48 @@ class _CRInstance(QWidget):
         tgt_col.addWidget(self.tgt_wheel)
         row1.addLayout(tgt_col)
 
-        # Buttons: pipette SRC + pipette TGT + reset + remove
-        btn_col = QVBoxLayout()
-        btn_col.setSpacing(1)
-        self._pipette_src = small_button("◉", tip="Pick SOURCE color from image")
-        self._pipette_src.setFixedSize(btn_size, btn_size)
+        # Sample buttons (readable text)
+        self._pipette_src = QPushButton("Sample Source")
+        self._pipette_src.setFixedHeight(btn_h)
         self._pipette_src.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pipette_src.setToolTip("Click, then pick a pixel from the image to set the source color")
         self._pipette_src.clicked.connect(lambda: self.pipette_requested.emit(self.index, "src"))
-        btn_col.addWidget(self._pipette_src)
+        row1.addWidget(self._pipette_src)
 
-        self._pipette_tgt = small_button("◉", tip="Pick TARGET color from image")
-        self._pipette_tgt.setFixedSize(btn_size, btn_size)
+        self._pipette_tgt = QPushButton("Sample Target")
+        self._pipette_tgt.setFixedHeight(btn_h)
         self._pipette_tgt.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pipette_tgt.setToolTip("Click, then pick a pixel from the image to set the target color")
         self._pipette_tgt.clicked.connect(lambda: self.pipette_requested.emit(self.index, "tgt"))
-        btn_col.addWidget(self._pipette_tgt)
+        row1.addWidget(self._pipette_tgt)
 
+        # Reset + Remove (small icon buttons)
         self._reset_btn = small_button("↺", tip=f"Reset instance {index + 1}")
-        self._reset_btn.setFixedSize(btn_size, btn_size)
+        self._reset_btn.setFixedSize(btn_h, btn_h)
         self._reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._reset_btn.clicked.connect(self._on_reset)
-        btn_col.addWidget(self._reset_btn)
+        row1.addWidget(self._reset_btn)
 
         self._remove_btn = small_button("×", tip="Remove this instance")
-        self._remove_btn.setFixedSize(btn_size, btn_size)
+        self._remove_btn.setFixedSize(btn_h, btn_h)
         self._remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._remove_btn.clicked.connect(lambda: self.removed.emit(self.index))
         self._remove_btn.setVisible(index > 0)
-        btn_col.addWidget(self._remove_btn)
-        btn_col.addStretch(1)
+        row1.addWidget(self._remove_btn)
 
-        row1.addLayout(btn_col)
-        row1.addStretch(1)
         box.addLayout(row1)
 
-        # Row 2: intensity + range sliders (all start inactive)
-        default_int = 0.0
+        # Row 2: intensity + range sliders side by side (half width each)
+        default_int = 0.5
         self.intensity = SliderRow(
             f"cr_{index}_intensity", 0.0, 1.0, default_int, 0.01, "Intensity", label_width=50)
         self.range = SliderRow(
             f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=50)
-        box.addWidget(self.intensity)
-        box.addWidget(self.range)
+        row2 = QHBoxLayout()
+        row2.setSpacing(4)
+        row2.addWidget(self.intensity)
+        row2.addWidget(self.range)
+        box.addLayout(row2)
 
         # Wire signals
         self.src_wheel.changed.connect(lambda *_a: self.changed.emit())
@@ -262,7 +263,8 @@ class ColorReplaceSection(QWidget):
         self.changed.emit()
 
     def _on_add(self) -> None:
-        self._add_instance()
+        for _ in range(2):
+            self._add_instance()
         self.changed.emit()
 
     def _on_switched(self, _key: str, on: bool) -> None:
