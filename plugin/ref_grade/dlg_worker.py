@@ -557,7 +557,7 @@ class WorkerMixin:
         self._set_status(msg)
         if ok and "Krita schließt" in msg:
             from PyQt6.QtCore import QTimer
-            QTimer.singleShot(1500, self.close)
+            QTimer.singleShot(3000, self.close)
 
     # ── K27f: drag tracking ─────────────────────────────────────────────────
 
