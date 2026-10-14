@@ -1,20 +1,23 @@
-"""Color Replace section: multiple instances, each with 2 color wheels + 2 sliders."""
+"""Color Replace section: multiple instances, each with 2 color wheels (75% size) + pipette + reset + 2 sliders."""
 
 from __future__ import annotations
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import (QHBoxLayout, QPushButton, QVBoxLayout, QWidget)
+import math
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget)
 
 from . import scale, style
-from .widgets import ColorWheel, SectionHeader, SliderRow
+from .widgets import ColorWheel, SectionHeader, SliderRow, small_button
 
 MAX_INSTANCES = 5
 
 
 class _CRInstance(QWidget):
-    """One Color Replace instance: source wheel, target wheel, intensity, range."""
+    """One Color Replace instance: 2 wheels (75%), pipette, reset, intensity, range."""
 
     changed = pyqtSignal()
+    pipette_requested = pyqtSignal(int, str)  # instance_index, "src"|"tgt"
 
     def __init__(self, index: int, parent: QWidget | None = None):
         super().__init__(parent)
@@ -23,31 +26,72 @@ class _CRInstance(QWidget):
         box.setContentsMargins(0, 0, 0, 4)
         box.setSpacing(2)
 
-        # Row 1: two color wheels side by side
-        wheel_row = QHBoxLayout()
-        wheel_row.setSpacing(8)
         _rh = scale.row_h(style.current_s())
-        wheel_size = round(3 * _rh)
+        # 75% of the WHEELS section wheel size
+        wheel_size = round(0.75 * style.current_s())
+        btn_size = round(_rh * 1.4)
+
+        # Row 0: labels
+        label_row = QHBoxLayout()
+        label_row.setSpacing(6)
+        lbl_src = QLabel("Source")
+        lbl_src.setFont(style.font("small"))
+        lbl_src.setProperty("font_role", "small")
+        lbl_src.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_tgt = QLabel("Target")
+        lbl_tgt.setFont(style.font("small"))
+        lbl_tgt.setProperty("font_role", "small")
+        lbl_tgt.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label_row.addWidget(lbl_src, 1)
+        label_row.addWidget(lbl_tgt, 1)
+        label_row.addStretch(1)
+        box.addLayout(label_row)
+
+        # Row 1: two wheels + pipette + reset
+        row1 = QHBoxLayout()
+        row1.setSpacing(6)
 
         self.src_wheel = ColorWheel(f"cr_{index}_src", self)
-        self.src_wheel.setFixedSizes(wheel_size, wheel_size) if hasattr(self.src_wheel, 'setFixedSizes') else None
         self.src_wheel.setFixedSize(wheel_size, wheel_size)
-        self.src_wheel.setToolTip("Source color: the hue range to replace")
+        self.src_wheel.setToolTip("Source color: the hue to replace")
+        # Default: red at full saturation (right edge)
+        self.src_wheel.set_point(0.5, 0.0)
 
         self.tgt_wheel = ColorWheel(f"cr_{index}_tgt", self)
         self.tgt_wheel.setFixedSize(wheel_size, wheel_size)
         self.tgt_wheel.setToolTip("Target color: the replacement hue")
+        # Default: blue at full saturation
+        self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
 
-        wheel_row.addWidget(self.src_wheel)
-        wheel_row.addWidget(self.tgt_wheel)
-        wheel_row.addStretch(1)
-        box.addLayout(wheel_row)
+        row1.addWidget(self.src_wheel)
+        row1.addWidget(self.tgt_wheel)
+
+        # Buttons: pipette + reset
+        btn_col = QVBoxLayout()
+        btn_col.setSpacing(4)
+        self._pipette_btn = small_button("◉", tip="Pick source color from image (click on image)")
+        self._pipette_btn.setFixedSize(btn_size, btn_size)
+        self._pipette_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pipette_btn.clicked.connect(lambda: self.pipette_requested.emit(self.index, "src"))
+        btn_col.addWidget(self._pipette_btn)
+
+        self._reset_btn = small_button("↺", tip=f"Reset instance {index + 1}")
+        self._reset_btn.setFixedSize(btn_size, btn_size)
+        self._reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._reset_btn.clicked.connect(self._on_reset)
+        btn_col.addWidget(self._reset_btn)
+        btn_col.addStretch(1)
+
+        row1.addLayout(btn_col)
+        row1.addStretch(1)
+        box.addLayout(row1)
 
         # Row 2: intensity + range sliders
         self.intensity = SliderRow(
-            f"cr_{index}_intensity", 0.0, 1.0, 0.0, 0.01, "Intensity", label_width=70)
+            f"cr_{index}_intensity", 0.0, 1.0, 1.0, 0.01, "Intensity", label_width=70)
         self.range = SliderRow(
             f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=70)
+        self.range.setToolTip("Falloff: how many degrees of neighboring hues are affected")
         box.addWidget(self.intensity)
         box.addWidget(self.range)
 
@@ -57,10 +101,16 @@ class _CRInstance(QWidget):
         self.intensity.changed.connect(lambda *_a: self.changed.emit())
         self.range.changed.connect(lambda *_a: self.changed.emit())
 
+    def _on_reset(self) -> None:
+        self.src_wheel.set_point(0.5, 0.0)
+        self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
+        self.intensity.set_value(1.0)
+        self.range.set_value(30.0)
+        self.changed.emit()
+
     def values(self) -> dict[str, float]:
         """Collect all cr_{i}_* values for this instance."""
         i = self.index
-        # Wheel: u,v → hue, sat
         src_h, src_s = self._wheel_hsv(self.src_wheel)
         tgt_h, tgt_s = self._wheel_hsv(self.tgt_wheel)
         return {
@@ -77,35 +127,56 @@ class _CRInstance(QWidget):
         i = self.index
         src_h = vals.get(f"cr_{i}_src_hue", 0.0)
         src_s = vals.get(f"cr_{i}_src_sat", 1.0)
-        tgt_h = vals.get(f"cr_{i}_tgt_hue", 0.0)
+        tgt_h = vals.get(f"cr_{i}_tgt_hue", 240.0)
         tgt_s = vals.get(f"cr_{i}_tgt_sat", 1.0)
         self._set_wheel_hsv(self.src_wheel, src_h, src_s)
         self._set_wheel_hsv(self.tgt_wheel, tgt_h, tgt_s)
-        self.intensity.set_value(vals.get(f"cr_{i}_intensity", 0.0))
+        self.intensity.set_value(vals.get(f"cr_{i}_intensity", 1.0))
         self.range.set_value(vals.get(f"cr_{i}_range", 30.0))
+
+    def set_src_from_rgb(self, r: float, g: float, b: float) -> None:
+        """Set the source wheel from an RGB pixel (0-1)."""
+        hue, sat = _rgb_to_hue_sat(r, g, b)
+        self._set_wheel_hsv(self.src_wheel, hue, sat)
+        self.changed.emit()
 
     @staticmethod
     def _wheel_hsv(wheel: ColorWheel) -> tuple[float, float]:
         """ColorWheel u,v → (hue 0-360, sat 0-1)."""
-        import math
         u, v = wheel.u, wheel.v
         hue = math.degrees(math.atan2(v, u)) % 360.0
-        sat = min(1.0, math.hypot(u, v) * 2)  # wheel radius = 0.5 → sat 1.0
+        sat = min(1.0, math.hypot(u, v) * 2)
         return round(hue, 1), round(sat, 3)
 
     @staticmethod
     def _set_wheel_hsv(wheel: ColorWheel, hue: float, sat: float) -> None:
         """(hue 0-360, sat 0-1) → ColorWheel u,v."""
-        import math
         rad = math.radians(hue)
-        r = sat / 2.0  # sat 1.0 → distance 0.5 (rim)
+        r = sat / 2.0
         wheel.set_point(r * math.cos(rad), r * math.sin(rad))
+
+
+def _rgb_to_hue_sat(r: float, g: float, b: float) -> tuple[float, float]:
+    """sRGB 0-1 → (hue 0-360, sat 0-1)."""
+    mx, mn = max(r, g, b), min(r, g, b)
+    d = mx - mn
+    if d < 1e-6:
+        return 0.0, 0.0
+    sat = d / mx if mx > 0 else 0.0
+    if mx == r:
+        h = 60.0 * (((g - b) / d) % 6.0)
+    elif mx == g:
+        h = 60.0 * (((b - r) / d) + 2.0)
+    else:
+        h = 60.0 * (((r - g) / d) + 4.0)
+    return round(h % 360.0, 1), round(sat, 3)
 
 
 class ColorReplaceSection(QWidget):
     """The full Color Replace chapter: header + N instances + Add button."""
 
     changed = pyqtSignal()
+    pipette_requested = pyqtSignal(int, str)  # instance_index, "src"|"tgt"
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -121,21 +192,18 @@ class ColorReplaceSection(QWidget):
         cbox.setContentsMargins(0, 0, 0, 0)
         cbox.setSpacing(4)
 
-        # Start with one instance
         self._instances: list[_CRInstance] = []
         self._add_instance()
 
-        # Add button
         self._add_btn = QPushButton("+ Add color")
         self._add_btn.setFixedHeight(scale.row_h(style.current_s()))
         self._add_btn.setToolTip("Add another color replacement instance (max 5)")
-        self._add_btn.setCursor(__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.CursorShape.PointingHandCursor)
+        self._add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._add_btn.clicked.connect(self._on_add)
         cbox.addWidget(self._add_btn)
 
         box.addWidget(self._content)
 
-        # Wire header
         self.header.weighted.connect(lambda *_a: self.changed.emit())
         self.header.switched.connect(self._on_switched)
         self.header.reset.connect(self._on_reset)
@@ -145,7 +213,7 @@ class ColorReplaceSection(QWidget):
             return
         inst = _CRInstance(len(self._instances), self._content)
         inst.changed.connect(self.changed)
-        # Insert before the Add button
+        inst.pipette_requested.connect(self.pipette_requested)
         cbox = self._content.layout()
         cbox.insertWidget(cbox.count() - 1, inst)
         self._instances.append(inst)
@@ -160,11 +228,15 @@ class ColorReplaceSection(QWidget):
 
     def _on_reset(self, _key: str) -> None:
         for inst in self._instances:
-            inst.set_values({})
+            inst._on_reset()
         self.changed.emit()
 
+    def set_pipette_color(self, index: int, r: float, g: float, b: float) -> None:
+        """Set the source wheel of instance `index` from an RGB pixel."""
+        if 0 <= index < len(self._instances):
+            self._instances[index].set_src_from_rgb(r, g, b)
+
     def values(self) -> dict[str, float]:
-        """All cr_* values from all instances."""
         out: dict[str, float] = {}
         for inst in self._instances:
             out.update(inst.values())
