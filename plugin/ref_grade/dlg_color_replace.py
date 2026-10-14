@@ -28,7 +28,7 @@ class _CRInstance(QWidget):
         self._tgt_rgb: tuple[float, float, float] = (0.25, 0.25, 0.75)
 
         _s = style.current_s()
-        wheel_size = min(65, round(0.70 * _s))
+        wheel_size = round(0.70 * _s)
         btn_h = max(28, scale.button_h(_s))
 
         grid = QGridLayout(self)
@@ -287,7 +287,7 @@ class ColorReplaceSection(QWidget):
         self._add_instance()
 
         self._add_btn = QPushButton("+ Add color")
-        self._add_btn.setFixedHeight(scale.row_h(style.current_s()))
+        self._add_btn.setFixedHeight(max(28, scale.button_h(style.current_s())))
         self._add_btn.setToolTip("Add another color replacement instance (max 8)")
         self._add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._add_btn.clicked.connect(self._on_add)
