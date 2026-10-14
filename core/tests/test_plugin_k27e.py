@@ -125,41 +125,29 @@ class TestUpdateButton(K27eTestBase):
         self.assertLess(reset.x(), update.x(), "UPDATE should be right of RESET")
         self.assertLess(update.x(), cancel.x(), "UPDATE should be left of CANCEL")
 
-    def test_update_click_calls_callback(self):
-        """Klick mit Fake-on_update → Rückruf genau einmal, danach /preview."""
+    def test_update_click_checks_github(self):
+        """Klick auf UPDATE → updater.check_and_update wird aufgerufen."""
+        import unittest.mock as mock
         calls = []
-        previews = []
 
-        def fake_client(port, path, payload):
-            if path == "/preview":
-                previews.append(payload)
-                img_path = str(Path(os.environ.get("TEMP", "/tmp")) / "test_preview.png")
-                QImage(100, 100, QImage.Format.Format_RGB32).save(img_path)
-                return {"image": img_path, "histogram": {}, "ms": 10.0}
-            return {}
-
-        def fake_on_update():
+        def fake_check(progress_cb=None):
             calls.append(1)
+            return True, "Bereits aktuell (abc12345)."
 
-        # Rebuild dialog with fake client and on_update
         QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).setValue("lut_folder", self._empty_lut_dir)
         img = QImage(400, 300, QImage.Format.Format_RGB32)
         img.fill(QColor(100, 140, 180))
-        dlg = RefGradeDialog(img, client=fake_client, source={"session": "test", "width": 400, "height": 300},
-                             on_update=fake_on_update)
+        dlg = RefGradeDialog(img, source={"session": "test", "width": 400, "height": 300})
         dlg.resize(W, H)
         dlg.show()
         _wait(self.app, lambda: dlg.width() >= W - 20)
         self.app.processEvents()
 
-        update_btn = dlg.findChild(QPushButton, "btn_update")
-        update_btn.click()
-        self.app.processEvents()
+        with mock.patch("ref_grade.updater.check_and_update", side_effect=fake_check):
+            update_btn = dlg.findChild(QPushButton, "btn_update")
+            update_btn.click()
 
-        self.assertEqual(len(calls), 1, f"on_update called {len(calls)} times")
-        # _schedule_preview uses a 30 ms debounce; wait for it to fire
-        _wait(self.app, lambda: len(previews) >= 1, timeout_ms=2000)
-        self.assertGreaterEqual(len(previews), 1, "No /preview after update")
+        self.assertEqual(len(calls), 1, f"updater called {len(calls)} times")
 
         dlg.close()
         dlg.deleteLater()

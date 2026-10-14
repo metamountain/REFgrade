@@ -309,7 +309,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._btn_update = QPushButton("UPDATE")
         self._btn_update.setObjectName("btn_update")
         self._btn_update.setProperty("main", "reset")
-        self._btn_update.setToolTip("Re-read the active layer and recompute the preview.")
+        self._btn_update.setToolTip("Check GitHub for a newer version and update if available.")
         self._btn_cancel = QPushButton("CANCEL")
         self._btn_cancel.setObjectName("btn_cancel")
         self._btn_cancel.setProperty("main", "cancel")

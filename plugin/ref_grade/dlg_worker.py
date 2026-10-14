@@ -546,13 +546,18 @@ class WorkerMixin:
         self.view.set_loading(True, prog)
 
     def _do_update(self) -> None:
-        """UPDATE: re-read the source layer and recompute the preview."""
-        if self._on_update is not None:
-            ok = self._on_update()
-            if ok is False:
-                return
-        if self._client is not None and self._session_id is not None:
-            self._schedule_preview()
+        """UPDATE: check GitHub for a newer version and install if available."""
+        from . import updater
+        self._set_status("Prüfe GitHub…")
+
+        def _progress(msg: str) -> None:
+            self._set_status(msg)
+
+        ok, msg = updater.check_and_update(progress_cb=_progress)
+        self._set_status(msg)
+        if ok and "Krita schließt" in msg:
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(1500, self.close)
 
     # ── K27f: drag tracking ─────────────────────────────────────────────────
 
