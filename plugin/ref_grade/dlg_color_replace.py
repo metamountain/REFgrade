@@ -31,49 +31,56 @@ class _CRInstance(QWidget):
         wheel_size = round(0.75 * style.current_s())
         btn_size = round(_rh * 1.4)
 
-        # Row 0: labels
-        label_row = QHBoxLayout()
-        label_row.setSpacing(6)
-        lbl_src = QLabel("Source")
-        lbl_src.setFont(style.font("small"))
-        lbl_src.setProperty("font_role", "small")
-        lbl_src.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_tgt = QLabel("Target")
-        lbl_tgt.setFont(style.font("small"))
-        lbl_tgt.setProperty("font_role", "small")
-        lbl_tgt.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label_row.addWidget(lbl_src, 1)
-        label_row.addWidget(lbl_tgt, 1)
-        label_row.addStretch(1)
-        box.addLayout(label_row)
-
-        # Row 1: two wheels + pipette + reset
+        # Row 1: two wheels (each with centered label above) + pipette + reset
         row1 = QHBoxLayout()
         row1.setSpacing(6)
 
+        src_col = QVBoxLayout()
+        src_col.setSpacing(0)
+        lbl_src = QLabel("SRC")
+        lbl_src.setFont(style.font("small"))
+        lbl_src.setProperty("font_role", "small")
+        lbl_src.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_src.setStyleSheet("color: #e07070;")
+        src_col.addWidget(lbl_src)
         self.src_wheel = ColorWheel(f"cr_{index}_src", self)
         self.src_wheel.setFixedSize(wheel_size, wheel_size)
         self.src_wheel.setToolTip("Source color: the hue to replace")
-        # Default: red at full saturation (right edge)
         self.src_wheel.set_point(0.5, 0.0)
+        src_col.addWidget(self.src_wheel)
+        row1.addLayout(src_col)
 
+        tgt_col = QVBoxLayout()
+        tgt_col.setSpacing(0)
+        lbl_tgt = QLabel("TGT")
+        lbl_tgt.setFont(style.font("small"))
+        lbl_tgt.setProperty("font_role", "small")
+        lbl_tgt.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_tgt.setStyleSheet("color: #70a0e0;")
+        tgt_col.addWidget(lbl_tgt)
         self.tgt_wheel = ColorWheel(f"cr_{index}_tgt", self)
         self.tgt_wheel.setFixedSize(wheel_size, wheel_size)
         self.tgt_wheel.setToolTip("Target color: the replacement hue")
-        # Default: blue at full saturation
         self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
+        tgt_col.addWidget(self.tgt_wheel)
+        row1.addLayout(tgt_col)
 
-        row1.addWidget(self.src_wheel)
-        row1.addWidget(self.tgt_wheel)
-
-        # Buttons: pipette + reset
+        # Buttons: pipette SRC + pipette TGT + reset
         btn_col = QVBoxLayout()
-        btn_col.setSpacing(4)
-        self._pipette_btn = small_button("◉", tip="Pick source color from image (click on image)")
-        self._pipette_btn.setFixedSize(btn_size, btn_size)
-        self._pipette_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._pipette_btn.clicked.connect(lambda: self.pipette_requested.emit(self.index, "src"))
-        btn_col.addWidget(self._pipette_btn)
+        btn_col.setSpacing(3)
+        self._pipette_src = small_button("◉", tip="Pick SOURCE color from image")
+        self._pipette_src.setFixedSize(btn_size, btn_size)
+        self._pipette_src.setStyleSheet("color: #e07070;")
+        self._pipette_src.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pipette_src.clicked.connect(lambda: self.pipette_requested.emit(self.index, "src"))
+        btn_col.addWidget(self._pipette_src)
+
+        self._pipette_tgt = small_button("◉", tip="Pick TARGET color from image")
+        self._pipette_tgt.setFixedSize(btn_size, btn_size)
+        self._pipette_tgt.setStyleSheet("color: #70a0e0;")
+        self._pipette_tgt.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pipette_tgt.clicked.connect(lambda: self.pipette_requested.emit(self.index, "tgt"))
+        btn_col.addWidget(self._pipette_tgt)
 
         self._reset_btn = small_button("↺", tip=f"Reset instance {index + 1}")
         self._reset_btn.setFixedSize(btn_size, btn_size)
@@ -138,6 +145,12 @@ class _CRInstance(QWidget):
         """Set the source wheel from an RGB pixel (0-1)."""
         hue, sat = _rgb_to_hue_sat(r, g, b)
         self._set_wheel_hsv(self.src_wheel, hue, sat)
+        self.changed.emit()
+
+    def set_tgt_from_rgb(self, r: float, g: float, b: float) -> None:
+        """Set the target wheel from an RGB pixel (0-1)."""
+        hue, sat = _rgb_to_hue_sat(r, g, b)
+        self._set_wheel_hsv(self.tgt_wheel, hue, sat)
         self.changed.emit()
 
     @staticmethod
@@ -231,10 +244,14 @@ class ColorReplaceSection(QWidget):
             inst._on_reset()
         self.changed.emit()
 
-    def set_pipette_color(self, index: int, r: float, g: float, b: float) -> None:
-        """Set the source wheel of instance `index` from an RGB pixel."""
+    def set_pipette_color(self, index: int, r: float, g: float, b: float, which: str = "src") -> None:
+        """Set the src or tgt wheel of instance `index` from an RGB pixel."""
         if 0 <= index < len(self._instances):
-            self._instances[index].set_src_from_rgb(r, g, b)
+            inst = self._instances[index]
+            if which == "tgt":
+                inst.set_tgt_from_rgb(r, g, b)
+            else:
+                inst.set_src_from_rgb(r, g, b)
 
     def values(self) -> dict[str, float]:
         out: dict[str, float] = {}

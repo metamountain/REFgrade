@@ -644,15 +644,17 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         super().done(r)
 
 
-    def _cr_pipette_mode(self, index: int, _which: str) -> None:
-        """Enable image sampling for Color Replace instance `index`."""
+    def _cr_pipette_mode(self, index: int, which: str) -> None:
+        """Enable image sampling for Color Replace instance `index`, target src or tgt."""
         self._cr_picking = True
         self._cr_pick_index = index
+        self._cr_pick_which = which
         self.view.setCursor(Qt.CursorShape.CrossCursor)
-        self._set_status(f"Color Replace · click a pixel to pick source color (instance {index + 1})")
+        label = "SOURCE" if which == "src" else "TARGET"
+        self._set_status(f"Color Replace · click to pick {label} color (instance {index + 1})")
 
     def _cr_pick_at(self, pos) -> None:
-        """Click on the image in CR-pick mode → read pixel → set source wheel."""
+        """Click on the image in CR-pick mode → read pixel → set src or tgt wheel."""
         self._cr_picking = False
         self.view.unsetCursor()
         if self._last_preview is None or self._last_preview.isNull():
@@ -672,7 +674,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         py = min(py, img_h - 1)
         c = self._last_preview.pixel(px, py)
         r, g, b = ((c >> 16) & 0xFF) / 255.0, ((c >> 8) & 0xFF) / 255.0, (c & 0xFF) / 255.0
-        self._cr_section.set_pipette_color(self._cr_pick_index, r, g, b)
+        self._cr_section.set_pipette_color(self._cr_pick_index, r, g, b, getattr(self, "_cr_pick_which", "src"))
         self._set_status(f"Color Replace · picked ({r:.2f}, {g:.2f}, {b:.2f})")
 
     def closeEvent(self, e) -> None:  # noqa: N802
