@@ -39,7 +39,7 @@ class _LutDelegate(QStyledItemDelegate):
 
     def paint(self, painter, option, index) -> None:  # noqa: N802
         super().paint(painter, option, index)
-        if option.state & QStyle.ItemFlag.Item_IsSelected:
+        if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(option.rect.left(), option.rect.top(), 3,
                              option.rect.height(), QColor(style.ACCENT_HI))
         if index == self._hover_idx:
