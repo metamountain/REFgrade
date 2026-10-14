@@ -19,17 +19,19 @@ class _CRInstance(QWidget):
     changed = pyqtSignal()
     pipette_requested = pyqtSignal(int, str)  # instance_index, "src"|"tgt"
 
+    removed = pyqtSignal(int)  # instance index
+
     def __init__(self, index: int, parent: QWidget | None = None):
         super().__init__(parent)
         self.index = index
         box = QVBoxLayout(self)
-        box.setContentsMargins(0, 0, 0, 4)
-        box.setSpacing(2)
+        box.setContentsMargins(0, 0, 0, 2)
+        box.setSpacing(1)
 
         _rh = scale.row_h(style.current_s())
         # 75% of the WHEELS section wheel size
         wheel_size = round(0.75 * style.current_s())
-        btn_size = round(_rh * 1.4)
+        btn_size = round(_rh * 1.3)
 
         # Row 1: two wheels (each with centered label above) + pipette + reset
         row1 = QHBoxLayout()
@@ -65,9 +67,9 @@ class _CRInstance(QWidget):
         tgt_col.addWidget(self.tgt_wheel)
         row1.addLayout(tgt_col)
 
-        # Buttons: pipette SRC + pipette TGT + reset
+        # Buttons: pipette SRC + pipette TGT + reset + remove
         btn_col = QVBoxLayout()
-        btn_col.setSpacing(3)
+        btn_col.setSpacing(2)
         self._pipette_src = small_button("◉", tip="Pick SOURCE color from image")
         self._pipette_src.setFixedSize(btn_size, btn_size)
         self._pipette_src.setStyleSheet("color: #e07070;")
@@ -87,15 +89,23 @@ class _CRInstance(QWidget):
         self._reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._reset_btn.clicked.connect(self._on_reset)
         btn_col.addWidget(self._reset_btn)
+
+        self._remove_btn = small_button("×", tip="Remove this instance")
+        self._remove_btn.setFixedSize(btn_size, btn_size)
+        self._remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._remove_btn.clicked.connect(lambda: self.removed.emit(self.index))
+        self._remove_btn.setVisible(index > 0)  # first instance cannot be removed
+        btn_col.addWidget(self._remove_btn)
         btn_col.addStretch(1)
 
         row1.addLayout(btn_col)
         row1.addStretch(1)
         box.addLayout(row1)
 
-        # Row 2: intensity + range sliders
+        # Row 2: intensity + range sliders (new instances start inactive)
+        default_int = 1.0 if index == 0 else 0.0
         self.intensity = SliderRow(
-            f"cr_{index}_intensity", 0.0, 1.0, 1.0, 0.01, "Intensity", label_width=70)
+            f"cr_{index}_intensity", 0.0, 1.0, default_int, 0.01, "Intensity", label_width=70)
         self.range = SliderRow(
             f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=70)
         self.range.setToolTip("Falloff: how many degrees of neighboring hues are affected")
@@ -227,9 +237,23 @@ class ColorReplaceSection(QWidget):
         inst = _CRInstance(len(self._instances), self._content)
         inst.changed.connect(self.changed)
         inst.pipette_requested.connect(self.pipette_requested)
+        inst.removed.connect(self._remove_instance)
         cbox = self._content.layout()
         cbox.insertWidget(cbox.count() - 1, inst)
         self._instances.append(inst)
+
+    def _remove_instance(self, index: int) -> None:
+        if index <= 0 or index >= len(self._instances):
+            return
+        inst = self._instances[index]
+        cbox = self._content.layout()
+        cbox.removeWidget(inst)
+        inst.deleteLater()
+        del self._instances[index]
+        # Re-index remaining instances
+        for i, remaining in enumerate(self._instances):
+            remaining.index = i
+        self.changed.emit()
 
     def _on_add(self) -> None:
         self._add_instance()
