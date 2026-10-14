@@ -24,6 +24,7 @@ class _CRInstance(QWidget):
     def __init__(self, index: int, parent: QWidget | None = None):
         super().__init__(parent)
         self.index = index
+        self._src_rgb: tuple[float, float, float] = (0.5, 0.5, 0.5)
         box = QVBoxLayout(self)
         box.setContentsMargins(2, 2, 2, 2)
         box.setSpacing(2)
@@ -32,7 +33,7 @@ class _CRInstance(QWidget):
         wheel_size = round(0.70 * _s)
         btn_h = scale.button_h(_s)
 
-        # Row 1: [SRC wheel] [TGT wheel] [Sample Source] [Sample Target] [↺] [×]
+        # Row 1: [SRC wheel + color sq] [TGT wheel] [Sample Source] [Sample Target] [↺] [×]
         row1 = QHBoxLayout()
         row1.setSpacing(4)
 
@@ -48,6 +49,13 @@ class _CRInstance(QWidget):
         self.src_wheel.setToolTip("Source color: the hue to replace")
         self.src_wheel.set_point(0.5, 0.0)
         src_col.addWidget(self.src_wheel)
+        # 24x24 color preview square (bottom-left of wheel)
+        self._src_color_sq = QLabel()
+        self._src_color_sq.setFixedSize(24, 24)
+        self._src_color_sq.setStyleSheet("background: #808080; border: 1px solid #2A2A2A;")
+        self._src_color_sq.setToolTip("Sampled source color (full RGB)")
+        self._src_color_sq.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        src_col.addWidget(self._src_color_sq, 0, Qt.AlignmentFlag.AlignLeft)
         row1.addLayout(src_col)
 
         tgt_col = QVBoxLayout()
@@ -95,16 +103,19 @@ class _CRInstance(QWidget):
 
         box.addLayout(row1)
 
-        # Row 2: intensity + range sliders side by side (half width each)
+        # Row 2: intensity + range + brightness sliders (3 equal parts)
         default_int = 0.5
         self.intensity = SliderRow(
             f"cr_{index}_intensity", 0.0, 1.0, default_int, 0.01, "Intensity", label_width=50)
         self.range = SliderRow(
             f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=50)
+        self.brightness = SliderRow(
+            f"cr_{index}_brightness", 0.0, 1.0, 0.5, 0.01, "Bright", label_width=50)
         row2 = QHBoxLayout()
         row2.setSpacing(4)
         row2.addWidget(self.intensity)
         row2.addWidget(self.range)
+        row2.addWidget(self.brightness)
         box.addLayout(row2)
 
         # Wire signals
@@ -112,12 +123,16 @@ class _CRInstance(QWidget):
         self.tgt_wheel.changed.connect(lambda *_a: self.changed.emit())
         self.intensity.changed.connect(lambda *_a: self.changed.emit())
         self.range.changed.connect(lambda *_a: self.changed.emit())
+        self.brightness.changed.connect(lambda *_a: self.changed.emit())
 
     def _on_reset(self) -> None:
         self.src_wheel.set_point(0.5, 0.0)
         self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
-        self.intensity.set_value(1.0)
+        self.intensity.set_value(0.5)
         self.range.set_value(30.0)
+        self.brightness.set_value(0.5)
+        self._src_rgb = (0.5, 0.5, 0.5)
+        self._update_color_sq()
         self.changed.emit()
 
     def values(self) -> dict[str, float]:
@@ -132,6 +147,7 @@ class _CRInstance(QWidget):
             f"cr_{i}_tgt_sat": tgt_s,
             f"cr_{i}_intensity": self.intensity.value(),
             f"cr_{i}_range": self.range.value(),
+            f"cr_{i}_brightness": self.brightness.value(),
         }
 
     def set_values(self, vals: dict[str, float]) -> None:
@@ -143,14 +159,25 @@ class _CRInstance(QWidget):
         tgt_s = vals.get(f"cr_{i}_tgt_sat", 1.0)
         self._set_wheel_hsv(self.src_wheel, src_h, src_s)
         self._set_wheel_hsv(self.tgt_wheel, tgt_h, tgt_s)
-        self.intensity.set_value(vals.get(f"cr_{i}_intensity", 1.0))
+        self.intensity.set_value(vals.get(f"cr_{i}_intensity", 0.5))
         self.range.set_value(vals.get(f"cr_{i}_range", 30.0))
+        self.brightness.set_value(vals.get(f"cr_{i}_brightness", 0.5))
 
     def set_src_from_rgb(self, r: float, g: float, b: float) -> None:
-        """Set the source wheel from an RGB pixel (0-1)."""
+        """Set the source wheel from an RGB pixel (0-1). Stores full RGB anchor."""
         hue, sat = _rgb_to_hue_sat(r, g, b)
         self._set_wheel_hsv(self.src_wheel, hue, sat)
+        self._src_rgb = (r, g, b)
+        self._update_color_sq()
         self.changed.emit()
+
+    def _update_color_sq(self) -> None:
+        """Update the 24x24 color preview square from _src_rgb."""
+        r, g, b = self._src_rgb
+        hexcol = "#{:02X}{:02X}{:02X}".format(
+            min(255, round(r * 255)), min(255, round(g * 255)), min(255, round(b * 255)))
+        self._src_color_sq.setStyleSheet(
+            f"background: {hexcol}; border: 1px solid #2A2A2A;")
 
     def set_tgt_from_rgb(self, r: float, g: float, b: float) -> None:
         """Set the target wheel from an RGB pixel (0-1)."""
