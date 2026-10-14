@@ -55,7 +55,7 @@ class TestGradeIndividualSlider(unittest.TestCase):
         "wheel_intensity": {"gain_r": 1.5},   # scales the wheel tint: no tint, no effect
     }
     # cr_*-Regler brauchen intensity > 0, um etwas zu tun
-    for _i in range(5):
+    for _i in range(8):
         for _k in ("src_hue", "src_sat", "tgt_hue", "tgt_sat", "range"):
             COMBO[f"cr_{_i}_{_k}"] = {f"cr_{_i}_intensity": 0.5}
 

@@ -151,8 +151,8 @@ class TestColorReplace(unittest.TestCase):
         torch.testing.assert_close(y2, x)
 
     def test_max_instances(self):
-        """MAX_INSTANCES = 5."""
-        self.assertEqual(MAX_INSTANCES, 5)
+        """MAX_INSTANCES = 8."""
+        self.assertEqual(MAX_INSTANCES, 8)
 
 
 if __name__ == "__main__":

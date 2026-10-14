@@ -74,7 +74,7 @@ def _replace_one(
     sat_guard = ((S - 0.02) / 0.13).clamp(0.0, 1.0)
     sat_guard = sat_guard * sat_guard * (3.0 - 2.0 * sat_guard)  # smoothstep
 
-    # Endgültige Maske: src_sat skaliert den Effekt (0=kein, 1=volle Stärke)
+    # Endgültige Maske: hue-distanz × sat_guard × src_sat × intensity
     mask = mask * sat_guard * src_sat * intensity
 
     # Ziel-Farbe: tgt_hue/tgt_sat, Helligkeit des Pixels beibehalten
