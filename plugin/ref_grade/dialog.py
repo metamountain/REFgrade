@@ -34,6 +34,7 @@ from .dlg_chain import ChainOrderPopup
 from .dlg_help_popup import HelpPopup, _help_html  # noqa: F401  (Tests importieren HelpPopup aus dialog)
 from .dlg_layout import LayoutMixin
 from .dlg_lut import LutMixin
+from .dlg_color_replace import ColorReplaceSection
 from .dlg_reference import ReferenceMixin
 from .dlg_worker import WorkerMixin, _ResultSignal, _WorkerTask, _histogram_of
 from .dlg_wb import WhiteBalanceMixin, _srgb_hue
@@ -255,6 +256,11 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         hsl_w, hsl_h, self._hsl_sliders, hsl_content = _hsl_section(self.sliders)
         scroll_layout.addWidget(hsl_w)
 
+        # Color Replace
+        self._cr_section = ColorReplaceSection(self._scroll)
+        self._cr_section.changed.connect(self._mode_changed)
+        scroll_layout.addWidget(self._cr_section)
+
         # Curves
         curves_w, curves_h, self.curves_editor, curves_content = _curves_section(self.sliders)
         scroll_layout.addWidget(curves_w)
@@ -370,6 +376,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             "tone": (tone_h, tone_rows),
             "rgb": (self._rgb_header, self._rgb_rows),
             "hsl": (hsl_h, []),
+            "color_replace": (self._cr_section.header, []),
             "curves": (curves_h, []),
             "wheels": (self._wheel_header,
                        [self._wheel_amount, self._wheel_intensity_slider,
@@ -379,12 +386,13 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         }
         self._contents = {
             "color": color_content, "tone": tone_content, "rgb": self._rgb_content,
-            "hsl": hsl_content, "curves": curves_content,
+            "hsl": hsl_content, "color_replace": self._cr_section._content,
+            "curves": curves_content,
             "wheels": self._wheel_content,
             "lut": self._lut_content, "reference": ref_content,
         }
         # Sections in the scrolling list
-        self._scroll_keys = ("color", "tone", "rgb", "hsl", "curves", "wheels", "lut", "reference")
+        self._scroll_keys = ("color", "tone", "rgb", "hsl", "color_replace", "curves", "wheels", "lut", "reference")
 
         self.curves_editor.changed.connect(self._curves_changed)
         # Wire all section signals

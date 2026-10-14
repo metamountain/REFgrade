@@ -193,7 +193,7 @@ class TestSectionsK9a(unittest.TestCase):
     """Sections: VISIBLE=47, FITTABLE=22, hsl-Namen."""
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 65)
+        self.assertEqual(len(VISIBLE), 95)
 
     def test_fittable_count(self):
         self.assertEqual(len(FITTABLE), 22)

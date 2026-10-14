@@ -244,7 +244,7 @@ class TestSections(unittest.TestCase):
 
     def test_visible_count(self):
         # 62 (vor K28d) + 2 (texture, dehaze) = 64
-        self.assertEqual(len(VISIBLE), 65)
+        self.assertEqual(len(VISIBLE), 95)
         self.assertIn("wheel_blending", VISIBLE)
         self.assertIn("wheel_balance", VISIBLE)
 

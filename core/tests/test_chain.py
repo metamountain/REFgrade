@@ -50,7 +50,7 @@ def _mix(**kw) -> dict:
 class TestOrder(unittest.TestCase):
     def test_default_order(self):
         self.assertEqual(DEFAULT_ORDER, ("reference", "color", "tone", "rgb", "curves", "wheels",
-                                         "hsl", "lut"))
+                                         "hsl", "color_replace", "lut"))
         self.assertEqual(set(DEFAULT_ORDER), set(SECTIONS))
         self.assertEqual(chain_order({}), DEFAULT_ORDER)
 

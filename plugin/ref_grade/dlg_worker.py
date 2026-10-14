@@ -89,6 +89,9 @@ class WorkerMixin:
             vals[light.name] = light.value()
         for kind in ("lift", "gamma", "gain"):
             vals.update(self.wheel_values(kind))
+        # Color Replace: custom values from the CR section
+        if hasattr(self, "_cr_section"):
+            vals.update(self._cr_section.values())
         return vals
 
 

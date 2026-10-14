@@ -55,6 +55,18 @@ def _sel() -> list[Slider]:
     return out
 
 
+def _color_replace() -> list[Slider]:
+    out: list[Slider] = []
+    for i in range(5):
+        out.append(Slider(f"cr_{i}_src_hue", "color_replace", 0.0, 360.0, 0.0, 1.0))
+        out.append(Slider(f"cr_{i}_src_sat", "color_replace", 0.0, 1.0, 1.0, 0.01))
+        out.append(Slider(f"cr_{i}_tgt_hue", "color_replace", 0.0, 360.0, 0.0, 1.0))
+        out.append(Slider(f"cr_{i}_tgt_sat", "color_replace", 0.0, 1.0, 1.0, 0.01))
+        out.append(Slider(f"cr_{i}_intensity", "color_replace", 0.0, 1.0, 0.0, 0.01))
+        out.append(Slider(f"cr_{i}_range", "color_replace", 1.0, 180.0, 30.0, 1.0))
+    return out
+
+
 SLIDERS: list[Slider] = [
     # match
     Slider("light_strength", "match", 0.0, 1.0, 1.0, 0.01, core=True),
@@ -91,4 +103,6 @@ SLIDERS: list[Slider] = [
     Slider("shadow_amount", "split", 0.0, 1.0, 0.0, 0.01),
     Slider("highlight_hue", "split", 0.0, 360.0, 40.0, 1.0),
     Slider("highlight_amount", "split", 0.0, 1.0, 0.0, 0.01),
+    # color replace (5 Instanzen × 6 Werte)
+    *_color_replace(),
 ]

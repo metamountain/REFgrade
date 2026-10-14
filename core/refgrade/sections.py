@@ -25,6 +25,8 @@ SECTIONS: dict[str, tuple[str, ...]] = {
            + tuple(f"rgb_use_{z}" for z in ("shadows", "midtones", "highlights")),
     "hsl": tuple(f"sel_{b}_{p}" for b in ("red", "yellow", "green", "cyan", "blue", "magenta")
                  for p in ("hue", "sat", "light")),
+    "color_replace": tuple(f"cr_{i}_{k}" for i in range(5)
+                           for k in ("src_hue", "src_sat", "tgt_hue", "tgt_sat", "intensity", "range")),
     "curves": (),
     "lut": (),
 }
@@ -67,7 +69,7 @@ def section_values(values: dict, key: str) -> dict:
 # vorigen — erst Vorlage und Neutralisieren, dann Helligkeit, dann die Farbräder auf der neuen
 # Helligkeit, HSL als Feinarbeit, die kreative LUT zuletzt. mix["order"] überschreibt sie (später
 # per Drag & Drop der Kapitel); fehlende Bereiche werden in dieser Reihenfolge angehängt.
-DEFAULT_ORDER: tuple[str, ...] = ("reference", "color", "tone", "rgb", "curves", "wheels", "hsl", "lut")
+DEFAULT_ORDER: tuple[str, ...] = ("reference", "color", "tone", "rgb", "curves", "wheels", "hsl", "color_replace", "lut")
 
 
 def chain_order(mix: dict) -> tuple[str, ...]:

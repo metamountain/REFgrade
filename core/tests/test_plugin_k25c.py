@@ -166,7 +166,7 @@ class TestCollapseGivesSpace(K25cTestBase):
     def test_all_collapsed_headers_close(self):
         """(K29: WHEELS sits in the wheel strip now.) Alle Sektionen collapsed → Abstand zwischen Headern ≤ 2×row_h."""
         # Collapse all sections except reference (already collapsed)
-        for key in ("color", "rgb", "tone", "hsl", "curves", "lut"):
+        for key in ("color", "rgb", "tone", "hsl", "color_replace", "curves", "lut"):
             if not self.dlg.sections[key][0].is_collapsed():
                 self.dlg.sections[key][0]._title_click()
                 self.app.processEvents()
@@ -175,7 +175,7 @@ class TestCollapseGivesSpace(K25cTestBase):
         row_h = scale.row_h(s)
 
         # Get y positions of all headers and sort by y
-        keys = ["color", "rgb", "tone", "hsl", "curves", "lut"]
+        keys = ["color", "rgb", "tone", "hsl", "color_replace", "curves", "lut"]
         positions = []
         for key in keys:
             h = self.dlg.sections[key][0]

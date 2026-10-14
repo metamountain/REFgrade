@@ -390,6 +390,157 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Scales the highlight zone mask (smoothstep 0.65–1.0 luminance) for R/G/B channel controls.",
         "tip": "1.0 = full effect in highlights, 0 = off. Master always acts everywhere.",
     },
+    # ── SLIDERS: color replace ─────────────────────────────────────────────
+    "cr_0_src_hue": {
+        "short": "Source hue (instance 1)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_0_src_sat": {
+        "short": "Source saturation (instance 1)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_0_tgt_hue": {
+        "short": "Target hue (instance 1)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_0_tgt_sat": {
+        "short": "Target saturation (instance 1)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_0_intensity": {
+        "short": "Replace strength (instance 1)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_0_range": {
+        "short": "Hue range (instance 1)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_1_src_hue": {
+        "short": "Source hue (instance 2)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_1_src_sat": {
+        "short": "Source saturation (instance 2)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_1_tgt_hue": {
+        "short": "Target hue (instance 2)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_1_tgt_sat": {
+        "short": "Target saturation (instance 2)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_1_intensity": {
+        "short": "Replace strength (instance 2)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_1_range": {
+        "short": "Hue range (instance 2)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_2_src_hue": {
+        "short": "Source hue (instance 3)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_2_src_sat": {
+        "short": "Source saturation (instance 3)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_2_tgt_hue": {
+        "short": "Target hue (instance 3)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_2_tgt_sat": {
+        "short": "Target saturation (instance 3)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_2_intensity": {
+        "short": "Replace strength (instance 3)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_2_range": {
+        "short": "Hue range (instance 3)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_3_src_hue": {
+        "short": "Source hue (instance 4)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_3_src_sat": {
+        "short": "Source saturation (instance 4)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_3_tgt_hue": {
+        "short": "Target hue (instance 4)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_3_tgt_sat": {
+        "short": "Target saturation (instance 4)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_3_intensity": {
+        "short": "Replace strength (instance 4)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_3_range": {
+        "short": "Hue range (instance 4)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_4_src_hue": {
+        "short": "Source hue (instance 5)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_4_src_sat": {
+        "short": "Source saturation (instance 5)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_4_tgt_hue": {
+        "short": "Target hue (instance 5)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_4_tgt_sat": {
+        "short": "Target saturation (instance 5)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_4_intensity": {
+        "short": "Replace strength (instance 5)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_4_range": {
+        "short": "Hue range (instance 5)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
 }
 
 # One short "Auto" paragraph per AUTO section (the "A" button in the header) — AUTO redesign
