@@ -29,8 +29,7 @@ class _CRInstance(QWidget):
         box.setSpacing(1)
 
         _rh = scale.row_h(style.current_s())
-        # Half-size wheels so 2 instances (4 wheels) fit in one row
-        wheel_size = round(0.375 * style.current_s())
+        wheel_size = round(0.70 * style.current_s())
         btn_size = round(_rh * 0.9)
 
         # Row 1: [SRC label+wheel] [TGT label+wheel] [buttons]
@@ -98,8 +97,8 @@ class _CRInstance(QWidget):
         row1.addStretch(1)
         box.addLayout(row1)
 
-        # Row 2: intensity + range sliders (new instances start inactive)
-        default_int = 1.0 if index == 0 else 0.0
+        # Row 2: intensity + range sliders (all start inactive)
+        default_int = 0.0
         self.intensity = SliderRow(
             f"cr_{index}_intensity", 0.0, 1.0, default_int, 0.01, "Intensity", label_width=50)
         self.range = SliderRow(
@@ -202,7 +201,7 @@ class ColorReplaceSection(QWidget):
         box.setContentsMargins(0, 0, 0, 2)
         box.setSpacing(1)
 
-        self.header = SectionHeader("color_replace", "Color Replace", on=True)
+        self.header = SectionHeader("color_replace", "Color Replace", on=False)
         box.addWidget(self.header)
 
         self._content = QWidget()

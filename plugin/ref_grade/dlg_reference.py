@@ -21,7 +21,7 @@ class ReferenceMixin:
         row = QHBoxLayout(w)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(4)
-        _rh = scale.row_h(style.current_s())
+        _bh = scale.button_h(style.current_s())
         self.methods = QButtonGroup(self)
         _method_tips = {
             "REINHARD": "Reinhard colour transfer: matches the mean and spread of the reference in Lab. Robust default.",
@@ -36,7 +36,7 @@ class ReferenceMixin:
             b.setChecked(i == 0)
             b.setFont(style.font("base"))
             b.setProperty("font_role", "base")
-            b.setFixedHeight(_rh)
+            b.setFixedHeight(_bh)
             b.setToolTip(_method_tips[name])
             self.methods.addButton(b, i)
             row.addWidget(b)
@@ -44,7 +44,7 @@ class ReferenceMixin:
         self.fit_btn.setObjectName("fit_btn")
         self.fit_btn.setFont(style.font("base"))
         self.fit_btn.setProperty("font_role", "base")
-        self.fit_btn.setFixedHeight(_rh)
+        self.fit_btn.setFixedHeight(_bh)
         self.fit_btn.setToolTip("Auto-fit Tone, Color and Wheels sliders to match the active reference")
         self.fit_btn.clicked.connect(self._do_fit)
         row.addWidget(self.fit_btn)
