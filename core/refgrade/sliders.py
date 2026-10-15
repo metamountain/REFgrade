@@ -60,8 +60,10 @@ def _color_replace() -> list[Slider]:
     for i in range(8):
         out.append(Slider(f"cr_{i}_src_hue", "color_replace", 0.0, 360.0, 0.0, 1.0))
         out.append(Slider(f"cr_{i}_src_sat", "color_replace", 0.0, 1.0, 1.0, 0.01))
+        out.append(Slider(f"cr_{i}_src_bright", "color_replace", 0.0, 1.0, 1.0, 0.01))
         out.append(Slider(f"cr_{i}_tgt_hue", "color_replace", 0.0, 360.0, 0.0, 1.0))
         out.append(Slider(f"cr_{i}_tgt_sat", "color_replace", 0.0, 1.0, 1.0, 0.01))
+        out.append(Slider(f"cr_{i}_tgt_bright", "color_replace", 0.0, 1.0, 1.0, 0.01))
         out.append(Slider(f"cr_{i}_intensity", "color_replace", 0.0, 1.0, 0.5, 0.01))
         out.append(Slider(f"cr_{i}_range", "color_replace", 1.0, 180.0, 30.0, 1.0))
     return out

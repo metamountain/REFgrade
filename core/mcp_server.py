@@ -75,6 +75,14 @@ def _port() -> int:
     if env_port:
         _state["port"] = int(env_port)
         return _state["port"]
+    # Try existing Krita worker before spawning a new one (avoids CUDA conflict)
+    for candidate in (47123,):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{candidate}/health", timeout=2):
+                _state["port"] = candidate
+                return candidate
+        except OSError:
+            pass
     port = _free_port()
     _state["proc"] = subprocess.Popen(
         [sys.executable, "-m", "worker", "--port", str(port), "--tmp", str(_TMP / "worker")],

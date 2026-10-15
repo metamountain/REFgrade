@@ -142,6 +142,11 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
 
     Returns (success, message).
     """
+    def _p(msg: str) -> None:
+        if progress_cb:
+            progress_cb(msg)
+
+    _p("Prüfe GitHub…")
     latest = _fetch_latest()
     if latest is None:
         return False, "GitHub nicht erreichbar (Netzwerk oder Rate-Limit)."
@@ -155,11 +160,11 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
         return True, f"Version notiert: {latest_sha[:8]} — {latest_msg}"
 
     if current == latest_sha:
-        return True, f"Bereits aktuell ({latest_sha[:8]})."
+        return True, f"Bereits die neueste Version ({latest_sha[:8]}) installiert."
 
-    # Newer version: download, extract to temp, write .bat, launch, close Krita
-    if progress_cb:
-        progress_cb("Lade ZIP von GitHub…")
+    # Newer version available
+    _p(f"Neuere Version gefunden: {latest_sha[:8]}")
+    _p("Update wird heruntergeladen…")
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="refgrade_upd_"))
     zip_path = tmp_dir / "repo.zip"
@@ -169,8 +174,7 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
     try:
         _download_zip(zip_path)
 
-        if progress_cb:
-            progress_cb("Entpacke…")
+        _p("Entpacke…")
         _extract_zip(zip_path, new_dir)
         _save_commit(latest_sha)
 
@@ -178,14 +182,16 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
         krita_exe = _find_krita()
         bat = _write_batch(tmp_dir, new_dir, target, krita_exe)
 
-        if progress_cb:
-            progress_cb("Starte Update-Skript, Krita schließt…")
+        _p("Arbeit speichern und Krita schließen!")
+        # Give the user a moment to read the message
+        import time
+        time.sleep(2)
 
         # Launch the batch in a new window (survives Krita exit)
         subprocess.Popen(
             [str(bat)],
             creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0x00000010),
         )
-        return True, f"Update läuft: {latest_sha[:8]} — {latest_msg}. Krita schließt sich."
+        return True, f"Update läuft: {latest_sha[:8]}. Krita schließt sich jetzt."
     except Exception as e:
         return False, f"Update fehlgeschlagen: {e}"

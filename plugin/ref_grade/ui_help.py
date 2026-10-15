@@ -24,8 +24,8 @@ _SECTIONS: dict[str, tuple[str, ...]] = {
            + tuple(f"rgb_use_{z}" for z in ("shadows", "midtones", "highlights")),
     "hsl": tuple(f"sel_{b}_{p}" for b in ("red", "yellow", "green", "cyan", "blue", "magenta")
                  for p in ("hue", "sat", "light")),
-    "color_replace": tuple(f"cr_{i}_{k}" for i in range(5)
-                           for k in ("src_hue", "src_sat", "tgt_hue", "tgt_sat", "intensity", "range")),
+    "color_replace": tuple(f"cr_{i}_{k}" for i in range(8)
+                           for k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "intensity", "range")),
     "curves": (),
     "lut": (),
 }
@@ -59,7 +59,7 @@ _LABELS: dict[str, str] = {
     "shadow_hue": "Shadow Hue", "shadow_amount": "Shadow Amount",
     "highlight_hue": "Highlight Hue", "highlight_amount": "Highlight Amount",
     **{f"cr_{i}_{k}": f"CR{i+1} {k.replace('_', ' ').title()}"
-       for i in range(5) for k in ("src_hue", "src_sat", "tgt_hue", "tgt_sat", "intensity", "range")},
+       for i in range(8) for k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "intensity", "range")},
 }
 
 

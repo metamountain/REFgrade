@@ -1,4 +1,4 @@
-"""Part A: Richtungs-Tests für alle 47 sichtbaren Regler.
+﻿"""Part A: Richtungs-Tests für alle 47 sichtbaren Regler.
 
 Jeder Regler steht auf einem deutlichen Wert, alle anderen auf Standard.
 Auswertung an festen Testfarben in Lab/HSV. Weicht ein Regler ab, ist das
@@ -913,7 +913,7 @@ class TestVisibleCount(unittest.TestCase):
     """Sicherstellen, dass alle 64 sichtbaren Regler in VISIBLE sind."""
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 95, f"VISIBLE hat {len(VISIBLE)} statt 95 Regler")
+        self.assertEqual(len(VISIBLE), 129, f"VISIBLE hat {len(VISIBLE)} statt 129 Regler")
 
 
 if __name__ == "__main__":

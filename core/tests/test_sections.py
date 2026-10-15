@@ -1,4 +1,4 @@
-"""Tests für refgrade.sections: SECTIONS, VISIBLE, chain_fn, Identität, Kette."""
+﻿"""Tests für refgrade.sections: SECTIONS, VISIBLE, chain_fn, Identität, Kette."""
 
 from __future__ import annotations
 
@@ -126,8 +126,8 @@ class TestSectionsTable(unittest.TestCase):
                          f"nur dialog+neu={expected - set(VISIBLE)}")
 
     def test_visible_count(self):
-        """VISIBLE hat genau 113 Einträge."""
-        self.assertEqual(len(VISIBLE), 113)
+        """VISIBLE hat genau 129 Einträge."""
+        self.assertEqual(len(VISIBLE), 129)
 
     def test_fittable_count(self):
         """FITTABLE hat genau 22 Einträge (tone + color + wheels, ohne clarity)."""

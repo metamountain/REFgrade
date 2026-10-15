@@ -401,6 +401,11 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
     },
+    "cr_0_src_bright": {
+        "short": "Source luminance (instance 1)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
     "cr_0_tgt_hue": {
         "short": "Target hue (instance 1)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
@@ -410,6 +415,11 @@ HELP: dict[str, dict[str, str]] = {
         "short": "Target saturation (instance 1)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_0_tgt_bright": {
+        "short": "Target luminance (instance 1)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
     },
     "cr_0_intensity": {
         "short": "Replace strength (instance 1)",
@@ -431,6 +441,11 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
     },
+    "cr_1_src_bright": {
+        "short": "Source luminance (instance 2)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
     "cr_1_tgt_hue": {
         "short": "Target hue (instance 2)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
@@ -440,6 +455,11 @@ HELP: dict[str, dict[str, str]] = {
         "short": "Target saturation (instance 2)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_1_tgt_bright": {
+        "short": "Target luminance (instance 2)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
     },
     "cr_1_intensity": {
         "short": "Replace strength (instance 2)",
@@ -461,6 +481,11 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
     },
+    "cr_2_src_bright": {
+        "short": "Source luminance (instance 3)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
     "cr_2_tgt_hue": {
         "short": "Target hue (instance 3)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
@@ -470,6 +495,11 @@ HELP: dict[str, dict[str, str]] = {
         "short": "Target saturation (instance 3)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_2_tgt_bright": {
+        "short": "Target luminance (instance 3)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
     },
     "cr_2_intensity": {
         "short": "Replace strength (instance 3)",
@@ -491,6 +521,11 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
     },
+    "cr_3_src_bright": {
+        "short": "Source luminance (instance 4)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
     "cr_3_tgt_hue": {
         "short": "Target hue (instance 4)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
@@ -500,6 +535,11 @@ HELP: dict[str, dict[str, str]] = {
         "short": "Target saturation (instance 4)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_3_tgt_bright": {
+        "short": "Target luminance (instance 4)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
     },
     "cr_3_intensity": {
         "short": "Replace strength (instance 4)",
@@ -521,6 +561,11 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
     },
+    "cr_4_src_bright": {
+        "short": "Source luminance (instance 5)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
     "cr_4_tgt_hue": {
         "short": "Target hue (instance 5)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
@@ -531,6 +576,11 @@ HELP: dict[str, dict[str, str]] = {
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
     },
+    "cr_4_tgt_bright": {
+        "short": "Target luminance (instance 5)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
+    },
     "cr_4_intensity": {
         "short": "Replace strength (instance 5)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
@@ -538,6 +588,126 @@ HELP: dict[str, dict[str, str]] = {
     },
     "cr_4_range": {
         "short": "Hue range (instance 5)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_5_src_hue": {
+        "short": "Source hue (instance 6)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_5_src_sat": {
+        "short": "Source saturation (instance 6)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_5_src_bright": {
+        "short": "Source luminance (instance 6)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
+    "cr_5_tgt_hue": {
+        "short": "Target hue (instance 6)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_5_tgt_sat": {
+        "short": "Target saturation (instance 6)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_5_tgt_bright": {
+        "short": "Target luminance (instance 6)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
+    },
+    "cr_5_intensity": {
+        "short": "Replace strength (instance 6)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_5_range": {
+        "short": "Hue range (instance 6)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_6_src_hue": {
+        "short": "Source hue (instance 7)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_6_src_sat": {
+        "short": "Source saturation (instance 7)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_6_src_bright": {
+        "short": "Source luminance (instance 7)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
+    "cr_6_tgt_hue": {
+        "short": "Target hue (instance 7)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_6_tgt_sat": {
+        "short": "Target saturation (instance 7)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_6_tgt_bright": {
+        "short": "Target luminance (instance 7)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
+    },
+    "cr_6_intensity": {
+        "short": "Replace strength (instance 7)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_6_range": {
+        "short": "Hue range (instance 7)",
+        "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
+        "tip": "30° for a narrow band, 90°+ for a wide range.",
+    },
+    "cr_7_src_hue": {
+        "short": "Source hue (instance 8)",
+        "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
+        "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
+    },
+    "cr_7_src_sat": {
+        "short": "Source saturation (instance 8)",
+        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
+        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
+    },
+    "cr_7_src_bright": {
+        "short": "Source luminance (instance 8)",
+        "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
+        "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
+    },
+    "cr_7_tgt_hue": {
+        "short": "Target hue (instance 8)",
+        "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
+        "tip": "Pick the desired replacement color on the target wheel.",
+    },
+    "cr_7_tgt_sat": {
+        "short": "Target saturation (instance 8)",
+        "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
+        "tip": "Match the source saturation or adjust for a muted look.",
+    },
+    "cr_7_tgt_bright": {
+        "short": "Target luminance (instance 8)",
+        "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
+        "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
+    },
+    "cr_7_intensity": {
+        "short": "Replace strength (instance 8)",
+        "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
+        "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
+    },
+    "cr_7_range": {
+        "short": "Hue range (instance 8)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
     },

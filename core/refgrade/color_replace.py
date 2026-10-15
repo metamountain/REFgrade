@@ -15,7 +15,7 @@ MAX_INSTANCES = 8
 
 
 def _cr_names(i: int) -> list[str]:
-    return [f"cr_{i}_{k}" for k in ("src_hue", "src_sat", "tgt_hue", "tgt_sat", "intensity", "range")]
+    return [f"cr_{i}_{k}" for k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "intensity", "range")]
 
 
 def all_cr_names() -> list[str]:
@@ -41,10 +41,12 @@ def apply(x: torch.Tensor, values: dict[str, float | torch.Tensor]) -> torch.Ten
             continue
         src_hue = values.get(f"cr_{i}_src_hue", 0.0)
         src_sat = values.get(f"cr_{i}_src_sat", 1.0)
+        src_bright = values.get(f"cr_{i}_src_bright", 1.0)
         tgt_hue = values.get(f"cr_{i}_tgt_hue", 0.0)
         tgt_sat = values.get(f"cr_{i}_tgt_sat", 1.0)
+        tgt_bright = values.get(f"cr_{i}_tgt_bright", 1.0)
         range_deg = values.get(f"cr_{i}_range", 30.0)
-        y = _replace_one(y, src_hue, src_sat, tgt_hue, tgt_sat, intensity, range_deg)
+        y = _replace_one(y, src_hue, src_sat, src_bright, tgt_hue, tgt_sat, tgt_bright, intensity, range_deg)
     return y
 
 
@@ -52,14 +54,18 @@ def _replace_one(
     x: torch.Tensor,
     src_hue: float | torch.Tensor,
     src_sat: float | torch.Tensor,
+    src_bright: float | torch.Tensor,
     tgt_hue: float | torch.Tensor,
     tgt_sat: float | torch.Tensor,
+    tgt_bright: float | torch.Tensor,
     intensity: float | torch.Tensor,
     range_deg: float | torch.Tensor,
 ) -> torch.Tensor:
     """Eine Instanz: Pixel im Hue-Bereich um src_hue werden zu tgt_Farbe gemischt.
 
     src_sat skaliert die Maske: gesättigte Quelle → stärkerer Effekt.
+    src_bright: Helligkeits-Gate (1.0=alle, 0.5=Midtones, 0.0=Schatten).
+    tgt_bright: Helligkeit der Ziel-Farbe skalieren (1.0=Pixel-V beibehalten, 0.0=schwarz).
     """
     h, S, V = _rgb_to_hsv(x)
 
@@ -67,22 +73,29 @@ def _replace_one(
     dh = torch.remainder(h - src_hue + 180.0, 360.0) - 180.0
     hue_dist = dh.abs()
 
-    # Weiche Maske: 1 im Zentrum → 0 am Rand des Bereichs
-    mask = (1.0 - hue_dist / range_deg).clamp(0.0, 1.0)
+    # Maske mit Plateau: Zentrum voll (mask=1), dann weicher Abfall am Rand.
+    # Ohne Plateau bleibt im Rand Blau stehen → Pink statt sauberem Rot.
+    # range_deg ist Float oder Tensor (Gradient-Test); UI-Minimum ist 1.0.
+    t = (hue_dist / range_deg).clamp(0.0, 1.0)
+    plateau = 0.6
+    mask = torch.where(t < plateau, torch.ones_like(t), (1.0 - t) / (1.0 - plateau))
 
     # Sättigungsguard: graue Pixel (S≈0) werden nicht berührt
     sat_guard = ((S - 0.02) / 0.13).clamp(0.0, 1.0)
     sat_guard = sat_guard * sat_guard * (3.0 - 2.0 * sat_guard)  # smoothstep
 
-    # Endgültige Maske: hue-distanz × sat_guard × src_sat × intensity
-    mask = mask * sat_guard * src_sat * intensity
+    # Helligkeits-Gate: 1.0=alle, <1.0=nur Pixel nahe src_bright
+    bright_gate = (1.0 - (V - src_bright).abs() * 2.0).clamp(0.0, 1.0)
 
-    # Ziel-Farbe: tgt_hue/tgt_sat, Helligkeit des Pixels beibehalten
-    # zeros_like + value: Gradient-kompatible "fill" (full_like akzeptiert keine Tensoren)
+    # Endgültige Maske: hue-plateau × sat_guard × bright_gate × src_sat × intensity
+    mask = mask * sat_guard * bright_gate * src_sat * intensity
+
+    # Ziel-Farbe: tgt_hue/tgt_sat, Helligkeit skaliert durch tgt_bright
+    V_tgt = V * tgt_bright
     tgt_rgb = _hsv_to_rgb(
         torch.zeros_like(h) + tgt_hue,
         torch.zeros_like(S) + tgt_sat,
-        V,
+        V_tgt,
     )
 
     # Mischen: original → ziel, gewichtet durch Maske ([B,H,W,1] broadcastet auf 3 Kanäle)

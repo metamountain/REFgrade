@@ -2,7 +2,16 @@
 
 Name: **RefGrade** (Nutzerentscheid 2026-10-07).
 
-Stand 2026-10-07, Entwurf zur Freigabe. Noch nichts davon ist gebaut.
+Stand: 2026-10-15. Voll gebaut und im Einsatz (Krita + Standalone).
+Funktionsreferenz: `docs/FUNKTIONEN.md`. UI-Entscheidungen: `docs/UI_ENTSCHEIDUNGEN.md`.
+
+## Aktueller Status
+
+- **Kern** (`core/refgrade/`): Lab, Reinhard, MKL, Zonal, Fit, Color Replace, Clarity, Curves, HSL, LUT, Scopes — fertig, getestet.
+- **Worker** (`core/worker.py`): HTTP-Dienst, alle Endpunkte live (siehe `docs/FUNKTIONEN.md`).
+- **Plugin** (`plugin/ref_grade/`): Vollbild-Dialog, alle Sektionen, Color Replace mit Pipette, LOAD/SAVE AS, Cursor, Chain-Order.
+- **Standalone** (`standalone/gui.py`): Gleicher Dialog ohne Krita, `_grad.png` Export.
+- **Deployment**: Junction `%APPDATA%\krita\pykrita\ref_grade` → `plugin/ref_grade`.
 
 ## 1. Ausgangslage (geprüft)
 

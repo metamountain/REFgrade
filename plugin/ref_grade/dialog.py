@@ -14,12 +14,12 @@ from typing import Callable
 
 from PyQt6.QtCore import (QEvent, QRectF, QSizeF, QObject, QRunnable, QSettings, QThreadPool, QTimer,
                           Qt, pyqtSignal)
-from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
-from PyQt6.QtWidgets import (QAbstractItemView, QButtonGroup, QComboBox, QDialog, QFileDialog,
-                             QGridLayout, QHBoxLayout, QLabel, QListWidget, QLayout, QPushButton,
-                             QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QKeySequence, QShortcut
+from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QComboBox, QDialog,
+                             QFileDialog, QGridLayout, QHBoxLayout, QLabel, QListWidget, QLayout,
+                             QMenu, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
-from . import config, scale, style
+from . import config, cursors, scale, style
 from . import wheels
 from .curves_ui import CurvesEditor, CHANNELS, HUE_CHANNELS, ALL_CHANNELS
 from .widgets import (IMAGE_SUFFIXES, ColorWheel, Histogram, ImageView, RefSlots, ScopeButton,
@@ -85,6 +85,10 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         # ── wiring state ──────────────────────────────────────────────────────
         self._client = client
         self._source = source
+        if source and source.get("path"):
+            self._btn_load.setEnabled(True)
+            _sc = QShortcut(QKeySequence("Ctrl+V"), self)
+            _sc.activated.connect(self._load_from_clipboard)
         self._save_lut = save_lut
         self._on_ok = on_ok
         self._on_update = on_update
@@ -95,6 +99,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._req_path: dict[int, str] = {}
         self._latest: dict[str, int] = {}
         self._crop_rect = None
+        self._saveas_out: str | None = None
         # No parent: a worker reply may arrive after the window is gone; it must reach a live
         # object (else a crash — closing during a running preview). done() disconnects it.
         self._result_sig = _ResultSignal()
@@ -304,8 +309,17 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         ref_cbox.insertWidget(2, self.slots)
         ref_cbox.insertWidget(3, method_row)
 
-        # K25c: RESET / UPDATE / CANCEL / OK at the bottom of the panel
+        # K25c: LOAD / CANCEL / RESET / UPDATE / SAVE AS / SAVE at the bottom
         _btn_h = round(scale.button_h(style.current_s()) * 1.5)
+        self._btn_load = QPushButton("LOAD")
+        self._btn_load.setObjectName("btn_load")
+        self._btn_load.setProperty("main", "reset")
+        self._btn_load.setToolTip("Load a new source image (standalone only)")
+        self._btn_load.setEnabled(False)
+        self._btn_cancel = QPushButton("CANCEL")
+        self._btn_cancel.setObjectName("btn_cancel")
+        self._btn_cancel.setProperty("main", "cancel")
+        self._btn_cancel.setToolTip("Close the dialog without applying any changes")
         self._btn_reset = QPushButton("RESET")
         self._btn_reset.setObjectName("btn_reset")
         self._btn_reset.setProperty("main", "reset")
@@ -314,30 +328,34 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._btn_update.setObjectName("btn_update")
         self._btn_update.setProperty("main", "reset")
         self._btn_update.setToolTip("Check GitHub for a newer version and update if available.")
-        self._btn_cancel = QPushButton("CANCEL")
-        self._btn_cancel.setObjectName("btn_cancel")
-        self._btn_cancel.setProperty("main", "cancel")
-        self._btn_cancel.setToolTip("Close the dialog without applying any changes")
-        # user 2026-10-11: "SAVE", styled like the others (no grey fill, not bold)
+        self._btn_saveas = QPushButton("SAVE AS")
+        self._btn_saveas.setObjectName("btn_saveas")
+        self._btn_saveas.setProperty("main", "cancel")
+        self._btn_saveas.setToolTip("Save the graded result to a chosen folder")
         self._btn_ok = QPushButton("SAVE")
         self._btn_ok.setObjectName("btn_ok")
         self._btn_ok.setProperty("main", "cancel")
         self._btn_ok.setToolTip("Save the grading as a new layer above the active one (the original layer stays untouched).")
-        for b in (self._btn_reset, self._btn_update, self._btn_cancel, self._btn_ok):
+        for b in (self._btn_load, self._btn_cancel, self._btn_reset, self._btn_update,
+                  self._btn_saveas, self._btn_ok):
             b.setFont(style.font("title", QFont.Weight.Normal))
             b.setProperty("font_role", "title")
             b.setFixedHeight(_btn_h)
         self._btn_ok.setDefault(True)
+        self._btn_load.clicked.connect(self._do_load_menu)
+        self._btn_cancel.clicked.connect(self.reject)
         self._btn_reset.clicked.connect(self._reset_all)
         self._btn_update.clicked.connect(self._do_update)
-        self._btn_cancel.clicked.connect(self.reject)
+        self._btn_saveas.clicked.connect(self._do_saveas)
         self._btn_ok.clicked.connect(self._do_ok)
         btn_row = QHBoxLayout()
         btn_row.setContentsMargins(0, 0, 0, 0)
         btn_row.setSpacing(4)
+        btn_row.addWidget(self._btn_load, 1)
+        btn_row.addWidget(self._btn_cancel, 1)
         btn_row.addWidget(self._btn_reset, 1)
         btn_row.addWidget(self._btn_update, 1)
-        btn_row.addWidget(self._btn_cancel, 1)
+        btn_row.addWidget(self._btn_saveas, 1)
         btn_row.addWidget(self._btn_ok, 2)
         # status line (was a strip under the image) sits in the gap above the main buttons
         self._status_label = QLabel("")
@@ -552,6 +570,71 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             pass
 
 
+    # ── LOAD / SAVE AS ─────────────────────────────────────────────────────────
+
+    def _do_load_menu(self) -> None:
+        m = QMenu(self)
+        m.addAction("Open file…", self._load_from_file)
+        m.addAction("Paste screenshot  (Ctrl+V)", self._load_from_clipboard)
+        m.addAction("Folder…", self._load_from_folder)
+        m.execAt(self._btn_load.mapToGlobal(self._btn_load.rect().bottomLeft()))
+
+    def _load_from_file(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Bild öffnen", str(config.ROOT),
+            "Bilder (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.webp)")
+        if path:
+            self._load_path(Path(path))
+
+    def _load_from_clipboard(self) -> None:
+        from PyQt6.QtGui import QClipboard
+        cb = QApplication.clipboard()
+        if cb is None:
+            return
+        img = cb.image()
+        if img is None or img.isNull():
+            self._set_status("Kein Bild in der Zwischenablage")
+            return
+        import tempfile
+        tmp = Path(tempfile.mkdtemp(prefix="refgrade_paste_"))
+        p = tmp / "pasted.png"
+        img.save(str(p), "PNG")
+        self._load_path(p)
+
+    def _load_from_folder(self) -> None:
+        d = QFileDialog.getExistingDirectory(self, "Ordner wählen", str(config.ROOT))
+        if not d:
+            return
+        d = Path(d)
+        files = sorted(
+            f for f in d.iterdir()
+            if f.suffix.lower() in (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp")
+        )
+        if not files:
+            self._set_status("Keine Bilddateien im Ordner")
+            return
+        self._load_path(files[0])
+
+    def _load_path(self, path: Path) -> None:
+        if not path.is_file():
+            return
+        if self._source is None or self._on_update is None:
+            return
+        self._source["path"] = str(path.resolve())
+        self._on_update()
+
+    def _do_saveas(self) -> None:
+        last = self._settings.value("saveas_folder", str(config.ROOT))
+        d = QFileDialog.getExistingDirectory(self, "Zielordner wählen", last)
+        if not d:
+            return
+        self._settings.setValue("saveas_folder", d)
+        src_path = self._source.get("path") if self._source else None
+        stem = Path(src_path).stem if src_path else "result"
+        target = Path(d) / f"{stem}_grad.png"
+        self._saveas_out = str(target)
+        self._do_ok()
+
     def _set_status(self, text: str) -> None:
         """K25i: status in the bottom strip; full text as tooltip."""
         self.view.set_status(text, text)
@@ -646,20 +729,34 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
 
     def _cr_pipette_mode(self, index: int, which: str) -> None:
         """Enable image sampling for Color Replace instance `index`, target src or tgt."""
+        self._cr_dbg(f"_cr_pipette_mode called: index={index} which={which}")
         self._cr_picking = True
         self._cr_pick_index = index
         self._cr_pick_which = which
-        self.view.setCursor(Qt.CursorShape.CrossCursor)
+        self.setCursor(cursors.pipette() if which == "src" else cursors.crosshair())
         label = "SOURCE" if which == "src" else "TARGET"
         self._set_status(f"Color Replace · click to pick {label} color (instance {index + 1})")
+
+    def _cr_dbg(self, msg: str) -> None:
+        try:
+            import datetime
+            log_path = Path(os.environ.get("TEMP", ".")) / "refgrade_cr_debug.log"
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"{datetime.datetime.now().isoformat()} {msg}\n")
+        except Exception:
+            pass
 
     def _cr_pick_at(self, pos) -> None:
         """Click on the image in CR-pick mode → read pixel → set src or tgt wheel."""
         self._cr_picking = False
-        self.view.unsetCursor()
-        if self._last_preview is None or self._last_preview.isNull():
+        self.unsetCursor()
+        img = self._last_preview
+        if img is None or img.isNull():
+            img = self._original_image
+        if img is None or img.isNull():
+            self._set_status("Color Replace · kein Bild zum Abtasten")
             return
-        img_w, img_h = self._last_preview.width(), self._last_preview.height()
+        img_w, img_h = img.width(), img.height()
         if img_w == 0 or img_h == 0:
             return
         w, h = self.view.width(), self.view.height()
@@ -672,7 +769,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             return
         px = min(px, img_w - 1)
         py = min(py, img_h - 1)
-        c = self._last_preview.pixel(px, py)
+        c = img.pixel(px, py)
         r, g, b = ((c >> 16) & 0xFF) / 255.0, ((c >> 8) & 0xFF) / 255.0, (c & 0xFF) / 255.0
         self._cr_section.set_pipette_color(self._cr_pick_index, r, g, b, getattr(self, "_cr_pick_which", "src"))
         self._set_status(f"Color Replace · picked ({r:.2f}, {g:.2f}, {b:.2f})")
@@ -687,6 +784,8 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802
         if obj is self.view:
+            if getattr(self, "_cr_picking", False) and event.type() == QEvent.Type.MouseButtonPress:
+                self._cr_dbg(f"eventFilter: CR-pick active, MouseButtonPress btn={event.button()}")
             if (event.type() == QEvent.Type.MouseButtonPress and getattr(self, "_cr_picking", False)
                     and event.button() == Qt.MouseButton.LeftButton):
                 self._cr_pick_at(event.position())

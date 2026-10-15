@@ -28,3 +28,7 @@ __pycache__/
 /core/tools/qwen_runlog.py
 /core/tools/qwen_runs_report.py
 /core/tools/ifscale_local.py
+# Test-Ausgaben und Build-Artefakte
+/core/sections_check_out/
+/plugin/ref_grade/installed_version.json
+*.spec.bak

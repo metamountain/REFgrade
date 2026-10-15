@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QEvent, QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import QBrush, QColor, QCursor, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QPushButton,
                              QSizePolicy, QVBoxLayout, QWidget)
 
@@ -12,6 +13,72 @@ from . import scale, style
 from .widgets import ColorWheel, SectionHeader, SliderRow, small_button
 
 MAX_INSTANCES = 8
+
+
+class BrightBar(QWidget):
+    """Thin brightness bar: black→white gradient with a draggable handle (value 0..1).
+
+    Not a normal slider — a solid gradient line you drag across (user 2026-10-15:
+    "not normal slider but a gradient white black line").
+    """
+
+    changed = pyqtSignal(str, float)
+
+    def __init__(self, name: str, default: float = 0.5, tip: str = "",
+                 parent: QWidget | None = None):
+        super().__init__(parent)
+        self.name = name
+        self._value = default
+        self._drag = False
+        _rh = scale.row_h(style.current_s())
+        self.setFixedHeight(max(12, round(_rh * 0.55)))
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        if tip:
+            self.setToolTip(tip)
+
+    def value(self) -> float:
+        return self._value
+
+    def set_value(self, v: float) -> None:
+        v = max(0.0, min(1.0, v))
+        if abs(v - self._value) > 1e-4:
+            self._value = v
+            self.update()
+            self.changed.emit(self.name, v)
+
+    def _set_from_x(self, x: float) -> None:
+        w = max(1, self.width())
+        self.set_value(x / w)
+
+    def mousePressEvent(self, e) -> None:  # noqa: N802
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._drag = True
+            self._set_from_x(e.position().x())
+            e.accept()
+
+    def mouseMoveEvent(self, e) -> None:  # noqa: N802
+        if self._drag and (e.buttons() & Qt.MouseButton.LeftButton):
+            self._set_from_x(e.position().x())
+            e.accept()
+
+    def mouseReleaseEvent(self, e) -> None:  # noqa: N802
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._drag = False
+            e.accept()
+
+    def paintEvent(self, _e) -> None:  # noqa: N802
+        p = QPainter(self)
+        w, h = self.width(), self.height()
+        grad = QLinearGradient(0, 0, w, 0)
+        grad.setColorAt(0.0, QColor(0, 0, 0))
+        grad.setColorAt(1.0, QColor(255, 255, 255))
+        p.fillRect(0, 0, w, h, QBrush(grad))
+        hx = int(round(self._value * (w - 1)))
+        p.setPen(QPen(QColor(style.ACCENT_HI), 2))
+        p.drawLine(hx, 0, hx, h)
+        p.setPen(QPen(QColor(style.LINE_STRONG), 1))
+        p.drawRect(QRectF(0.5, 0.5, w - 1, h - 1))
 
 
 class _CRInstance(QWidget):
@@ -55,7 +122,9 @@ class _CRInstance(QWidget):
         self._src_color_sq.setFixedSize(sq_size, sq_size)
         self._src_color_sq.move(0, wheel_size - sq_size)
         self._src_color_sq.setStyleSheet("background: #808080; border: 1px solid #2A2A2A;")
-        self._src_color_sq.setToolTip("Sampled source color")
+        self._src_color_sq.setToolTip("Click to pick source color")
+        self._src_color_sq.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._src_color_sq.installEventFilter(self)
         src_box.addWidget(self._src_container, 0, Qt.AlignmentFlag.AlignHCenter)
         grid.addLayout(src_box, 0, 0)
 
@@ -77,11 +146,23 @@ class _CRInstance(QWidget):
         self._tgt_color_sq.setFixedSize(sq_size, sq_size)
         self._tgt_color_sq.move(0, wheel_size - sq_size)
         self._tgt_color_sq.setStyleSheet("background: #4040C0; border: 1px solid #2A2A2A;")
-        self._tgt_color_sq.setToolTip("Target color")
+        self._tgt_color_sq.setToolTip("Click to pick target color")
+        self._tgt_color_sq.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._tgt_color_sq.installEventFilter(self)
         tgt_box.addWidget(self._tgt_container, 0, Qt.AlignmentFlag.AlignHCenter)
         grid.addLayout(tgt_box, 0, 1)
 
-        # ── Row 1: 2 sliders stacked, spanning both columns ──
+        # ── Row 1: brightness gradient bars under the wheels (half width, one line) ──
+        self.src_bright = BrightBar(
+            f"cr_{index}_src_bright", 1.0,
+            tip="Source luminance window (black=shadows, white=highlights)")
+        self.tgt_bright = BrightBar(
+            f"cr_{index}_tgt_bright", 1.0,
+            tip="Target brightness offset (black=darker, white=brighter)")
+        grid.addWidget(self.src_bright, 1, 0)
+        grid.addWidget(self.tgt_bright, 1, 1)
+
+        # ── Row 2: intensity + range sliders, spanning both columns ──
         slider_box = QVBoxLayout()
         slider_box.setSpacing(2)
         self.intensity = SliderRow(
@@ -90,9 +171,9 @@ class _CRInstance(QWidget):
             f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=65)
         slider_box.addWidget(self.intensity)
         slider_box.addWidget(self.range)
-        grid.addLayout(slider_box, 1, 0, 1, 2)
+        grid.addLayout(slider_box, 2, 0, 1, 2)
 
-        # ── Row 2: buttons (Source, Target, ↺, ×) in a horizontal row ──
+        # ── Row 3: buttons (Source, Target, ↺, ×) in a horizontal row ──
         btn_row = QHBoxLayout()
         btn_row.setSpacing(3)
         btn_row.addStretch()
@@ -121,11 +202,13 @@ class _CRInstance(QWidget):
         self._remove_btn.clicked.connect(lambda: self.removed.emit(self.index))
         self._remove_btn.setVisible(index > 0)
         btn_row.addWidget(self._remove_btn)
-        grid.addLayout(btn_row, 2, 0, 1, 2)
+        grid.addLayout(btn_row, 3, 0, 1, 2)
 
         # Wire signals
         self.src_wheel.changed.connect(self._on_src_wheel_changed)
         self.tgt_wheel.changed.connect(self._on_tgt_wheel_changed)
+        self.src_bright.changed.connect(lambda *_a: self.changed.emit())
+        self.tgt_bright.changed.connect(lambda *_a: self.changed.emit())
         self.intensity.changed.connect(lambda *_a: self.changed.emit())
         self.range.changed.connect(lambda *_a: self.changed.emit())
 
@@ -146,6 +229,8 @@ class _CRInstance(QWidget):
     def _on_reset(self) -> None:
         self.src_wheel.set_point(0.5, 0.0)
         self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
+        self.src_bright.set_value(1.0)
+        self.tgt_bright.set_value(1.0)
         self.intensity.set_value(0.5)
         self.range.set_value(30.0)
         self._src_rgb = (0.5, 0.5, 0.5)
@@ -163,6 +248,8 @@ class _CRInstance(QWidget):
             f"cr_{i}_src_sat": src_s,
             f"cr_{i}_tgt_hue": tgt_h,
             f"cr_{i}_tgt_sat": tgt_s,
+            f"cr_{i}_src_bright": self.src_bright.value(),
+            f"cr_{i}_tgt_bright": self.tgt_bright.value(),
             f"cr_{i}_intensity": self.intensity.value(),
             f"cr_{i}_range": self.range.value(),
         }
@@ -176,6 +263,8 @@ class _CRInstance(QWidget):
         tgt_s = vals.get(f"cr_{i}_tgt_sat", 1.0)
         self._set_wheel_hsv(self.src_wheel, src_h, src_s)
         self._set_wheel_hsv(self.tgt_wheel, tgt_h, tgt_s)
+        self.src_bright.set_value(vals.get(f"cr_{i}_src_bright", 1.0))
+        self.tgt_bright.set_value(vals.get(f"cr_{i}_tgt_bright", 1.0))
         self.intensity.set_value(vals.get(f"cr_{i}_intensity", 0.5))
         self.range.set_value(vals.get(f"cr_{i}_range", 30.0))
 
@@ -207,6 +296,16 @@ class _CRInstance(QWidget):
             min(255, round(tr * 255)), min(255, round(tg * 255)), min(255, round(tb * 255)))
         self._tgt_color_sq.setStyleSheet(
             f"background: {hex_tgt}; border: 1px solid #2A2A2A;")
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
+            if obj is self._src_color_sq:
+                self.pipette_requested.emit(self.index, "src")
+                return True
+            if obj is self._tgt_color_sq:
+                self.pipette_requested.emit(self.index, "tgt")
+                return True
+        return super().eventFilter(obj, event)
 
     @staticmethod
     def _wheel_hsv(wheel: ColorWheel) -> tuple[float, float]:
@@ -272,7 +371,7 @@ class ColorReplaceSection(QWidget):
         box.setContentsMargins(0, 0, 0, 2)
         box.setSpacing(1)
 
-        self.header = SectionHeader("color_replace", "Color Replace", on=False)
+        self.header = SectionHeader("color_replace", "Color Replace", on=True)
         box.addWidget(self.header)
 
         self._content = QWidget()

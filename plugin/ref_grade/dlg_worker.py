@@ -436,6 +436,15 @@ class WorkerMixin:
     def _apply_apply(self, result: dict) -> None:
         """Handle /apply response: call on_ok and close."""
         raw = result["raw"]
+        if getattr(self, "_saveas_out", None):
+            import numpy as np
+            from PIL import Image
+            arr = np.fromfile(raw, dtype=np.uint8).reshape(self._orig_h, self._orig_w, 4)
+            rgb = np.ascontiguousarray(arr[..., [2, 1, 0]])
+            Image.fromarray(rgb, mode="RGB").save(self._saveas_out, quality=95)
+            self._set_status(f"Gespeichert: {self._saveas_out}")
+            self._saveas_out = None
+            return
         clarity_info = result.get("clarity")
         if self._on_ok:
             # clarity_info is an optional trailing argument: only pass it when present,

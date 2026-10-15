@@ -1,4 +1,4 @@
-"""Tests für K11: Blending und Balance der Farbräder."""
+﻿"""Tests für K11: Blending und Balance der Farbräder."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ class TestBlendOneMatchesOld(unittest.TestCase):
         vals["gamma_g"] = 0.9
         vals["gamma_b"] = 1.1
         vals["gain_r"] = 1.15
-        vals["gain_g"] = 0.95
+        vals["gain_g"] = 0.129
         vals["gain_b"] = 1.1
         vals["lift_m"] = 0.02
         vals["gamma_m"] = 1.05
@@ -244,7 +244,7 @@ class TestSections(unittest.TestCase):
 
     def test_visible_count(self):
         # 62 (vor K28d) + 2 (texture, dehaze) = 64
-        self.assertEqual(len(VISIBLE), 95)
+        self.assertEqual(len(VISIBLE), 129)
         self.assertIn("wheel_blending", VISIBLE)
         self.assertIn("wheel_balance", VISIBLE)
 

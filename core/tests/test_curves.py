@@ -1,4 +1,4 @@
-"""Tests für Paket K9a: Kurven (PCHIP), HSL-Bereich, Vibrance, Sections, Worker."""
+﻿"""Tests für Paket K9a: Kurven (PCHIP), HSL-Bereich, Vibrance, Sections, Worker."""
 
 from __future__ import annotations
 
@@ -193,7 +193,7 @@ class TestSectionsK9a(unittest.TestCase):
     """Sections: VISIBLE=47, FITTABLE=22, hsl-Namen."""
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 95)
+        self.assertEqual(len(VISIBLE), 129)
 
     def test_fittable_count(self):
         self.assertEqual(len(FITTABLE), 22)
