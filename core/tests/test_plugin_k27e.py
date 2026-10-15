@@ -114,16 +114,16 @@ class TestUpdateButton(K27eTestBase):
     """UPDATE zwischen RESET und CANCEL; Klick mit Fake-on_update."""
 
     def test_update_position(self):
-        """UPDATE ist zwischen RESET und CANCEL."""
+        """UPDATE ist rechts von RESET; CANCEL links von RESET (LOAD·CANCEL·RESET·UPDATE·…)."""
         reset = self.dlg.findChild(QPushButton, "btn_reset")
         update = self.dlg.findChild(QPushButton, "btn_update")
         cancel = self.dlg.findChild(QPushButton, "btn_cancel")
         self.assertIsNotNone(reset, "RESET not found")
         self.assertIsNotNone(update, "UPDATE not found")
         self.assertIsNotNone(cancel, "CANCEL not found")
-        # In the button row: RESET(1) UPDATE(1) CANCEL(1) OK(2)
+        # Button row: LOAD · CANCEL · RESET · UPDATE · SAVE AS · SAVE
+        self.assertLess(cancel.x(), reset.x(), "CANCEL should be left of RESET")
         self.assertLess(reset.x(), update.x(), "UPDATE should be right of RESET")
-        self.assertLess(update.x(), cancel.x(), "UPDATE should be left of CANCEL")
 
     def test_update_click_checks_github(self):
         """Klick auf UPDATE → updater.check_and_update wird aufgerufen."""
@@ -214,9 +214,8 @@ class TestLoadingBar(K27eTestBase):
         _wait(self.app, lambda: dlg.width() >= W - 20)
         self.app.processEvents()
 
-        # Manually set loading state and check position
+        # Manually set loading state and check position (no processEvents: timer would overwrite)
         dlg.view.set_loading(True, 0.5)
-        self.app.processEvents()
         self.assertTrue(dlg.view._loading)
         self.assertAlmostEqual(dlg.view._loading_progress, 0.5)
         dlg.view.set_loading(False)

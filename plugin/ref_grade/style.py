@@ -89,7 +89,12 @@ def font(role: str = "base", weight: QFont.Weight = QFont.Weight.Normal) -> QFon
 
 def apply_fonts(root: QWidget) -> None:
     """Re-apply fonts and stylesheet to the widget tree after a scale change."""
-    root.setStyleSheet(stylesheet())
+    theme_name = getattr(root, "_theme_name", None)
+    if theme_name:
+        from . import themes
+        themes.apply_theme(root, theme_name, base_sheet=stylesheet())
+    else:
+        root.setStyleSheet(stylesheet())
     for w in root.findChildren(QWidget):
         role = w.property("font_role")
         if role is None:

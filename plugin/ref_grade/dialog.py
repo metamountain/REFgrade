@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QCom
                              QFileDialog, QGridLayout, QHBoxLayout, QLabel, QListWidget, QLayout,
                              QMenu, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
-from . import config, cursors, scale, style
+from . import config, cursors, scale, style, themes
 from . import wheels
 from .curves_ui import CurvesEditor, CHANNELS, HUE_CHANNELS, ALL_CHANNELS
 from .widgets import (IMAGE_SUFFIXES, ColorWheel, Histogram, ImageView, RefSlots, ScopeButton,
@@ -74,11 +74,14 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         else:
             _app = "RefGrade"
         self._settings = QSettings("RefGrade", _app)
+        self._theme_name = self._settings.value("theme", "anthrazite", type=str)
+        self._theme_name = self._theme_name if self._theme_name in themes.THEMES else "anthrazite"
         self._building = True
         try:
             self._build()
         finally:
             self._building = False
+        themes.apply_theme(self, self._theme_name, base_sheet=style.stylesheet())
         # K22: color is most recently touched so _enforce_no_scroll won't collapse it first
         self._touch_order = [k for k in self._scroll_keys if k != "color"] + ["color"]
 
@@ -214,6 +217,14 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._general_help_btn.setProperty("help", True)
         self._general_help_btn.setToolTip("Overall strength of all sections.")
         self._general_help_btn.clicked.connect(lambda: self._on_help_requested("general"))
+        self._theme_btn = QPushButton("🎨")
+        self._theme_btn.setObjectName("theme_btn")
+        self._theme_btn.setFont(style.font("title"))
+        self._theme_btn.setProperty("font_role", "title")
+        self._theme_btn.setFixedSize(_rh, _rh)
+        self._theme_btn.setProperty("help", True)
+        self._theme_btn.setToolTip(f"Theme: {themes.get_theme(self._theme_name)['name']} (click to cycle)")
+        self._theme_btn.clicked.connect(self._cycle_theme)
         self._chain_order_btn = QPushButton("⇅")
         self._chain_order_btn.setObjectName("chain_order_btn")
         self._chain_order_btn.setFont(style.font("title"))
@@ -234,6 +245,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         master_row_lay.addWidget(self.master, 1)
         master_row_lay.addWidget(self._chain_order_btn)
         master_row_lay.addWidget(self._general_help_btn)
+        master_row_lay.addWidget(self._theme_btn)
         left.addWidget(self._master_row)
 
         # Scroll list: WB·COLOR, TONE, HSL, CURVES, LUT, REFERENCE
@@ -692,6 +704,22 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         popup.show()
         popup.raise_()
         self._chain_order_popup = popup
+
+
+    def _set_theme(self, name: str) -> None:
+        """Switch the UI theme, persist it, and re-apply base + theme stylesheet."""
+        if name not in themes.THEMES:
+            name = "anthrazite"
+        self._theme_name = name
+        self._settings.setValue("theme", name)
+        themes.apply_theme(self, name, base_sheet=style.stylesheet())
+        self._theme_btn.setToolTip(f"Theme: {themes.get_theme(name)['name']} (click to cycle)")
+
+
+    def _cycle_theme(self) -> None:
+        """Cycle black -> anthrazite -> white -> black."""
+        idx = themes.ORDER.index(self._theme_name) if self._theme_name in themes.ORDER else 1
+        self._set_theme(themes.ORDER[(idx + 1) % len(themes.ORDER)])
 
 
     def _set_help_open(self, key: str, open: bool) -> None:

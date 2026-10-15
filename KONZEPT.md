@@ -177,3 +177,60 @@ prüfbar ist, prüft der Nutzer per Auge. Installation: `install.py` legt die Ju
    gefüllt; von Hand belegte bleiben.
 7. LUT… / ABBRECHEN / OK sitzen unten in Reglerspalte 2; die Bildfläche zeigt nur das Bild.
 8. Vorschläge-Raster 3×3 (Methode × Stärke) kommt nicht in Version 1.
+
+## Zukunft: GPU-Native Pipeline (ONNX)
+
+Feature-Request / Architektur-Idee (2026-10-15):
+
+**Ziel:** Colorgrading-Operationen direkt auf der GPU ausführen (ONNX Runtime), statt CPU-fall-back.
+
+**Schritte:**
+1. **Prototyp (Python):** Krita-Python-API → Layer-Daten als QImage / ManagedColor lesen
+2. **GPU-Berechnung:** Daten → ONNX-Format. Colorgrading via LUTs oder neuronalen Netzen auf GPU
+3. **Zurückschreiben:** Ergebnis → neue Ebene oder Filter-Maske
+
+**Referenz:**
+- ModernGL/GLSL-Shader-Plugin-Entwicklung (Krita Artists Forum)
+- GPU-Shader für Filtereffekte (chromatische Aberration etc.)
+
+**Status:** Konzept, nicht umgesetzt. Aktuelle Pipeline nutzt torch (GPU-fähig) für CR, Rest CPU.
+
+### Prototyp: ONNX LUT (2026-10-15)
+
+Erster konkreter Schritt: die LUT-Anwendung (einfachster GPU-Modul, trilineare
+Interpolation) als ONNX-Modell gebaut und gegen die Torch-Referenz gemessen.
+
+- **Code:** `core/refgrade/onnx_lut.py` (echte Trilinear-LUT + Identity-Smoke-Test),
+  Test `core/tests/test_onnx_lut.py`.
+- **Korrektheit:** ONNX-Trilinear == Torch `grid_sample` (align_corners=True) auf
+  float32-Präzision (max err ~2e-7). Modell validiert per `onnx.checker`.
+- **Benchmark 1024×768, LUT 33³ (CPU, 5 Runs):** ONNX 306 ms · Torch CPU 46 ms ·
+  Torch CUDA 0.27 ms. ONNX ist ~6.7× langsamer als Torch CPU, ~1000× langsamer als
+  Torch CUDA.
+- **Blocker für echte GPU-ONNX:** installiertes `onnxruntime` hat nur
+  `CPUExecutionProvider` (kein `CUDAExecutionProvider`). Für GPU-Betrieb braucht es
+  `onnxruntime-gpu` + CUDA/cuDNN.
+- **Was für echte Trilinear-ONNX nötig war (umgesetzt):** `pos = pixel·(N-1)`, 8 Eckwerte
+   per `GatherND` (Indizes `[1,P,8,3,4]` = c,b,g,r), dann 3× gewichtetes Blending.
+   Dynamische H/W, opset 17, ~93 Nodes.
+
+**Distribution-Strategie (2026-10-15):**
+
+| Tier | Ziel | Tech |
+|------|------|------|
+| **Portable** | Standalone-EXE, läuft überall | ONNX + Windows ML CLI (portables, hardware-optimiertes Artefakt: AMD, Intel, NVIDIA, Qualcomm) |
+
+**Windows ML CLI:**
+- Microsoft-Tool: ONNX → portables, hardware-optimiertes Artefakt
+- "Build once, run across hardware"
+- Kein CUDA-Dependency-Problem mehr
+- Ideal für die Portable-Tier-EXE
+
+**Benchmark (2026-10-15, LUT 33³, 1024×768):**
+| Path | Zeit |
+|------|------|
+| ONNX (CPU) | ~333 ms |
+| Torch (CPU) | ~49 ms |
+| Torch (CUDA) | ~0.27 ms |
+
+→ ONNX CPU ist aktuell 6.8× langsamer als Torch CPU. GPU-Vorteil erst mit CUDAExecutionProvider / Windows ML CLI.

@@ -337,7 +337,6 @@ class TestLayout(K10bTestBase):
             "result": {"r": [0.12] * 128, "g": [0.22] * 128, "b": [0.32] * 128, "l": [0.17] * 128},
         }
         d.histogram.set_rgb_data(rgb_data)
-        self.app.processEvents()
         self.assertIn("r", d.histogram.visible_channels)
         self.assertIn("g", d.histogram.visible_channels)
         self.assertIn("b", d.histogram.visible_channels)

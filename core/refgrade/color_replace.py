@@ -64,8 +64,10 @@ def _replace_one(
     """Eine Instanz: Pixel im Hue-Bereich um src_hue werden zu tgt_Farbe gemischt.
 
     src_sat skaliert die Maske: gesättigte Quelle → stärkerer Effekt.
-    src_bright: Helligkeits-Gate (1.0=alle, 0.5=Midtones, 0.0=Schatten).
-    tgt_bright: Helligkeit der Ziel-Farbe skalieren (1.0=Pixel-V beibehalten, 0.0=schwarz).
+    src_bright: Proximitätsfilter für die SELECTION — nur Pixel mit V nahe src_bright
+        werden ersetzt (1.0=volle Helligkeit, 0.5=nur Midtones, 0.0=nur Schatten).
+    tgt_bright: skaliert die OUTPUT-Helligkeit der ersetzten Pixel
+        (1.0=normal, <1.0=dunkler, >1.0= heller, geclampt 0..1).
     """
     h, S, V = _rgb_to_hsv(x)
 
@@ -84,19 +86,22 @@ def _replace_one(
     sat_guard = ((S - 0.02) / 0.13).clamp(0.0, 1.0)
     sat_guard = sat_guard * sat_guard * (3.0 - 2.0 * sat_guard)  # smoothstep
 
-    # Helligkeits-Gate: 1.0=alle, <1.0=nur Pixel nahe src_bright
-    bright_gate = (1.0 - (V - src_bright).abs() * 2.0).clamp(0.0, 1.0)
+    # Helligkeits-Proximitätsfilter (SELECTION): nur Pixel mit V nahe src_bright matchen.
+    # Halbfenster 0.25: 1.0 → V∈[0.75,1] (volle Helligkeit), 0.5 → V∈[0.25,0.75] (nur Midtones),
+    # 0.0 → V∈[0,0.25] (nur Schatten).
+    bright_gate = (1.0 - (V - src_bright).abs() * 4.0).clamp(0.0, 1.0)
 
     # Endgültige Maske: hue-plateau × sat_guard × bright_gate × src_sat × intensity
     mask = mask * sat_guard * bright_gate * src_sat * intensity
 
-    # Ziel-Farbe: tgt_hue/tgt_sat, Helligkeit skaliert durch tgt_bright
-    V_tgt = V * tgt_bright
+    # Ziel-Farbe: tgt_hue/tgt_sat, OUTPUT-Helligkeit = Pixel-V × tgt_bright (geclampt 0..1)
+    V_tgt = (V * tgt_bright).clamp(0.0, 1.0)
     tgt_rgb = _hsv_to_rgb(
         torch.zeros_like(h) + tgt_hue,
         torch.zeros_like(S) + tgt_sat,
         V_tgt,
     )
 
-    # Mischen: original → ziel, gewichtet durch Maske ([B,H,W,1] broadcastet auf 3 Kanäle)
-    return x + mask * (tgt_rgb - x)
+    # Mischen: original → ziel, gewichtet durch Maske ([B,H,W,1] broadcastet auf 3 Kanäle).
+    # Final-Clamp: intensity > 1 (Overshoot) kann über 0..1 hinausreichen.
+    return (x + mask * (tgt_rgb - x)).clamp(0.0, 1.0)

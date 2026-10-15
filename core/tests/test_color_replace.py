@@ -150,6 +150,48 @@ class TestColorReplace(unittest.TestCase):
         y2 = apply(x, vals2)
         torch.testing.assert_close(y2, x)
 
+    def test_src_bright_selects_brightness_range(self):
+        """src_bright=0.5 → nur Midtones (V≈0.5) ersetzt; Highlight (V=1) bleibt."""
+        vals = _defaults()
+        vals["cr_0_src_hue"] = 240.0
+        vals["cr_0_src_sat"] = 1.0
+        vals["cr_0_src_bright"] = 0.5
+        vals["cr_0_tgt_hue"] = 0.0
+        vals["cr_0_tgt_sat"] = 1.0
+        vals["cr_0_tgt_bright"] = 1.0
+        vals["cr_0_intensity"] = 1.0
+        vals["cr_0_range"] = 90.0
+        # Midtone-Blau (V=0.5) → Fenster [0.25,0.75] → ersetzt (rot mit V=0.5)
+        x_mid = torch.tensor([[[[0.0, 0.0, 0.5]] * 4] * 4])
+        y_mid = apply(x_mid, vals)
+        self.assertAlmostEqual(y_mid[0, 0, 0, 0].item(), 0.5, delta=0.01)
+        self.assertLess(y_mid[0, 0, 0, 2].item(), 0.01)
+        # Highlight-Blau (V=1.0) → außerhalb des Fensters → unverändert
+        x_hi = torch.tensor([[[[0.0, 0.0, 1.0]] * 4] * 4])
+        y_hi = apply(x_hi, vals)
+        torch.testing.assert_close(y_hi, x_hi)
+
+    def test_tgt_bright_scales_output_brightness(self):
+        """tgt_bright skaliert OUTPUT-Helligkeit: 0.5=dunkler, 1.0=normal, 1.5=geclampt."""
+        x = torch.tensor([[[[0.0, 0.0, 1.0]] * 4] * 4])  # reines Blau, V=1
+
+        def _red(tb: float) -> float:
+            vals = _defaults()
+            vals["cr_0_src_hue"] = 240.0
+            vals["cr_0_src_sat"] = 1.0
+            vals["cr_0_src_bright"] = 1.0
+            vals["cr_0_tgt_hue"] = 0.0
+            vals["cr_0_tgt_sat"] = 1.0
+            vals["cr_0_tgt_bright"] = tb
+            vals["cr_0_intensity"] = 1.0
+            vals["cr_0_range"] = 90.0
+            return apply(x, vals)[0, 0, 0, 0].item()
+
+        self.assertAlmostEqual(_red(0.5), 0.5, delta=0.01)
+        self.assertAlmostEqual(_red(1.0), 1.0, delta=0.01)
+        self.assertAlmostEqual(_red(1.5), 1.0, delta=0.01)  # V_tgt=1.5 → geclampt
+        self.assertLess(_red(0.5), _red(1.0))
+
     def test_max_instances(self):
         """MAX_INSTANCES = 8."""
         self.assertEqual(MAX_INSTANCES, 8)

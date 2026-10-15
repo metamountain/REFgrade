@@ -380,6 +380,8 @@ class LayoutMixin:
         self._general_help_btn.setFixedSize(_rh, _rh)
         if hasattr(self, "_chain_order_btn"):      # ⇅ neben MASTER (K35a), gleiche Größe wie „?“
             self._chain_order_btn.setFixedSize(_rh, _rh)
+        if hasattr(self, "_theme_btn"):            # 🎨 Theme-Schalter, gleiche Größe wie „?“
+            self._theme_btn.setFixedSize(_rh, _rh)
         self._master_row.setFixedHeight(_rh)
         # K25i: update section header button sizes
         for _key, (_hdr, _rows) in self.sections.items():

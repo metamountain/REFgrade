@@ -64,3 +64,20 @@ def crosshair() -> QCursor:
     p.drawEllipse(c - 1, c - 1, 2, 2)
     p.end()
     return QCursor(pm, c, c)
+
+
+def loupe() -> QCursor:
+    """Magnifier (loupe): lens + 45° handle. Hotspot = lens centre (zoom-in cue)."""
+    size = 32
+    pm, p = _base(size)
+    pen = QPen(_COLOR)
+    pen.setWidth(2)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(pen)
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawEllipse(5, 5, 16, 16)      # lens
+    pen.setWidth(3)
+    p.setPen(pen)
+    p.drawLine(19, 19, 28, 28)       # handle at 45°
+    p.end()
+    return QCursor(pm, 13, 13)
