@@ -107,3 +107,29 @@ cd core && python -m pytest tests/test_color_replace.py -v
 - `tests/test_color_replace.py`: 2 neue Tests (`test_src_bright_selects_brightness_range`,
   `test_tgt_bright_scales_output_brightness`) → 10/10 PASS.
 - Funktionstest: reines Blau (V=1) → Rot: tgt_bright 0.5/1.0/1.5 → R=0.5/1.0/1.0 (geclampt).
+
+## 2026-10-15: CR in der Kette + Core-Default-Fix
+
+### Problem
+
+`color_replace` stand in `SECTIONS`/`DEFAULT_ORDER` (`sections.py`), aber `_section_fns()`
+(`session.py`) baute nie eine Funktion dafür → die Kette übersprang CR, weil `source_fns`
+keinen Key `"color_replace"` hatte.
+
+### Fix (3 Stellen)
+
+1. **`session.py` `_section_fns()`**: CR-Block nach `curves` eingefügt
+   (`section_values(vals, "color_replace")` + Lambda mit `_v=v_cr` Closure-Fix).
+2. **`sliders.py`**: `cr_{i}_intensity` Core-Default **0.5 → 0.0**. Der alte Wert 0.5 war
+   ein Bug gegen die dokumentierte Semantik (siehe Tabelle oben: Core-Default = 0.0 inaktiv).
+   Mit 0.5 war CR bei `mix=None` (alle Gewichte 1.0) standardmäßig AKTIV und veränderte
+   jedes Bild → brach `test_session.py::TestReinhard` (L*-Mittel, ΔE00). Mit 0.0 ist CR
+   ein No-Op, bis der Nutzer eine Instanz aktiviert.
+3. **`test_grade.py`**: COMBO-Liste um `src_bright`/`tgt_bright` ergänzt. Die beiden
+   fehlten (nur `src_hue/src_sat/tgt_hue/tgt_sat/range`), funktionierten aber bisher nur,
+   weil der falsche Default 0.5 CR aktiv hielt. Bei korrektem Default 0.0 brauchen sie wie
+   alle anderen cr_*-Regler `intensity > 0` im COMBO, um in `test_all_sliders` zu wirken.
+
+### Verifikation
+
+`python -m pytest core/tests/ -q` → **1004 passed, 36 skipped, 1265 subtests, 0 failed**.

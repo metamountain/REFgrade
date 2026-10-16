@@ -259,7 +259,7 @@ class _CRInstance(QWidget):
             self._close_btn.setText("×")
             self._close_btn.setFixedSize(16, 16)
             self._close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            self._close_btn.setToolTip("Disable this instance (intensity → 0)")
+            self._close_btn.setToolTip("Remove this color instance")
             self._close_btn.clicked.connect(self._on_close)
 
         # Wire signals
@@ -315,10 +315,21 @@ class _CRInstance(QWidget):
         self.changed.emit()
 
     def _on_close(self) -> None:
-        """Close: intensity → 0 (the core skips intensity ≤ 0) and hide the instance."""
-        self.intensity.set_value(0.0)
-        self.setVisible(False)
-        self.changed.emit()
+        """Close: remove this instance from the section."""
+        self.removed.emit(self.index)
+
+    def set_wheel_size(self, size: int) -> None:
+        """Resize both wheels, color squares, and reset buttons to the given size."""
+        sq_size = max(16, round(size * 0.25))
+        for container, wheel, sq, reset in (
+            (self._src_container, self.src_wheel, self._src_color_sq, self._src_reset),
+            (self._tgt_container, self.tgt_wheel, self._tgt_color_sq, self._tgt_reset),
+        ):
+            container.setFixedSize(size, size)
+            wheel.setGeometry(0, 0, size, size)
+            sq.setFixedSize(sq_size, sq_size)
+            sq.move(0, size - sq_size)
+            reset.move(size - 16, 0)
 
     def values(self) -> dict[str, float]:
         """Collect all cr_{i}_* values for this instance (only keys known to the worker)."""
@@ -495,6 +506,14 @@ class ColorReplaceSection(QWidget):
         """Instance index → (row, col) in the 2-column grid."""
         return divmod(idx, 2)
 
+    def _update_wheel_sizes(self) -> None:
+        """Resize all instance wheels: natural with ≤2 instances, compact (≤100px) with 3+."""
+        _s = style.current_s()
+        natural = round(0.85 * _s * 0.7)
+        size = natural if len(self._instances) <= 2 else min(100, natural)
+        for inst in self._instances:
+            inst.set_wheel_size(size)
+
     def _add_instance(self) -> None:
         if len(self._instances) >= MAX_INSTANCES:
             return
@@ -506,6 +525,7 @@ class ColorReplaceSection(QWidget):
         row, col = self._grid_pos(idx)
         self._grid.addWidget(inst, row, col)
         self._instances.append(inst)
+        self._update_wheel_sizes()
 
     def _remove_instance(self, index: int) -> None:
         if index <= 0 or index >= len(self._instances):
@@ -520,6 +540,7 @@ class ColorReplaceSection(QWidget):
             row, col = self._grid_pos(i)
             self._grid.removeWidget(remaining)
             self._grid.addWidget(remaining, row, col)
+        self._update_wheel_sizes()
         self.changed.emit()
 
     def _on_add(self) -> None:

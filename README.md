@@ -1,4 +1,4 @@
-# REFgrade — Colour Grading by Reference (Krita plugin · standalone in progress)
+# REFgrade — Colour Grading by Reference (Krita plugin · standalone GUI)
 
 > **Hobby project — not bug-free.** Tested only on Windows 11 with Krita 6.0.4 (beta) at
 > 2560×1440. Expect rough edges, crashes, and things that simply don't work yet.
@@ -10,6 +10,17 @@ Transfers the light and color mood of a reference image onto your image in Krita
 Adjust the result with grading sliders, apply it as a new layer, or export as a 3D LUT (.cube).
 
 <a href="docs/screenshot.jpg"><img src="docs/screenshot.jpg" width="100%" alt="REFgrade dialog: grading controls, colour wheels and scopes beside the graded image"></a>
+
+## Features
+
+- Reference-based color grading (Reinhard, MKL, Zonal, Pair)
+- 11 sections: WB/Color, Tone, RGB, HSL, Color Replace, Curves, LUT, Reference, …
+- 8 Color Replace instances (HSL-distance mask)
+- 33³ LUT engine (GPU)
+- Scopes: Parade, Waveform, Vectorscope, Histogram
+- 3 Color Wheels (Lift/Gamma/Gain)
+- 3 UI Schemes (Carbon, Anthrazite, Paper)
+- Krita plugin + standalone GUI
 
 ## Prerequisites
 
@@ -64,10 +75,21 @@ usually `%APPDATA%\krita`). To free the disk space used by the runtime, delete
 
 1. Open the RefGrade dialog from the Filter menu.
 2. Load one or more reference images into the slots (drag & drop or click).
-3. Choose a method (Reinhard / MKL / Zonal) and press FIT to auto-match.
+3. Choose a method (Reinhard / MKL / Zonal / Pair) and press FIT to auto-match
+   (FIT is not available for Pair — it learns the LUT directly from a before/after pair).
 4. Fine-tune with the sliders and color wheels; use SOLO to isolate a section.
 5. Press OK to apply as a new layer, or LUT… to export a .cube file.
 6. CANCEL closes without applying.
+
+## Standalone (ohne Krita)
+
+```bash
+python standalone/gui.py /path/to/image.jpg
+```
+
+- Opens the full RefGrade GUI with the given image (no argument → file dialog)
+- Works without a Krita installation
+- Requires: Python 3.10+, PyTorch, PyQt6
 
 ## LUT output
 
@@ -98,3 +120,11 @@ Exported .cube files are saved to the folder you choose in the file dialog
   with the worker bundled as `ref_grade/core`.
 - **Never import the ZIP while the dev junction exists** — the importer would overwrite the repository's
   plugin files through the junction. Run `python install.py --uninstall` first.
+
+## Documentation
+
+- [Features](docs/FUNKTIONEN.md)
+- [UI Decisions](docs/UI_ENTSCHEIDUNGEN.md)
+- [Torch/ONNX Facts](docs/TORCH_ONNX_FACTS.md)
+- [Concept](KONZEPT.md)
+- [Backlog](BACKLOG.md)

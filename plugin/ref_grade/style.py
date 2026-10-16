@@ -7,17 +7,23 @@ from pathlib import Path
 from PyQt6.QtGui import QFont, QFontDatabase
 from PyQt6.QtWidgets import QWidget
 
-from . import scale
+from . import scale, schemes
 
-BLACK = "#000000"
-TEXT = "#EDEDED"
-MUTED = "#8A8A8A"
-LINE = "#1A1A1A"
-LINE_STRONG = "#2A2A2A"
-DIM = "#3A3A3A"           # text and controls of a section that is OFF
-ACCENT = "#6E6E6E"       # grey accent: ON button, OK
-ACCENT_HI = "#B4B4B4"    # grey accent (bright): text/border for checked, hover, selected
-ACCENT_HOVER = "#828282" # OK button hover
+# The nine legacy chrome constants (BLACK, TEXT, MUTED, LINE, LINE_STRONG, DIM,
+# ACCENT, ACCENT_HI, ACCENT_HOVER) are no longer fixed values: they resolve live to
+# the active colour scheme (see schemes.role_color), so every ``style.X`` reference
+# and the window stylesheet re-tint when the scheme changes.
+_CHROME_ROLES = ("BLACK", "TEXT", "MUTED", "LINE", "LINE_STRONG",
+                 "DIM", "ACCENT", "ACCENT_HI", "ACCENT_HOVER")
+
+
+def __getattr__(name):  # noqa: N807 - module-level live chrome colours
+    if name in _CHROME_ROLES:
+        return schemes.role_color(name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+# Functional (non-scheme) colours: fixed regardless of the active scheme.
+MARK_ERROR = "#B4B4B4"   # status-strip error mark (K27e: grey, not red)
 
 # Superslim colour tracks (user 2026-10-07: "Farbanzeige superslim"): the 2 px slider groove
 # is a gradient that shows where the slider pushes. Stops are 0..1 over the slider range.
@@ -88,13 +94,8 @@ def font(role: str = "base", weight: QFont.Weight = QFont.Weight.Normal) -> QFon
 
 
 def apply_fonts(root: QWidget) -> None:
-    """Re-apply fonts and stylesheet to the widget tree after a scale change."""
-    theme_name = getattr(root, "_theme_name", None)
-    if theme_name:
-        from . import themes
-        themes.apply_theme(root, theme_name, base_sheet=stylesheet())
-    else:
-        root.setStyleSheet(stylesheet())
+    """Re-apply fonts and (scheme-driven) stylesheet to the widget tree after a scale change."""
+    root.setStyleSheet(stylesheet())
     for w in root.findChildren(QWidget):
         role = w.property("font_role")
         if role is None:
@@ -104,10 +105,23 @@ def apply_fonts(root: QWidget) -> None:
 
 
 def stylesheet(s: float | None = None) -> str:
-    """Full window stylesheet; tooltip font-size derives from the scale unit."""
+    """Full window stylesheet; tooltip font-size derives from the scale unit.
+
+    The chrome colours are resolved from the active colour scheme at call time, so
+    re-calling this after a scheme change yields a re-tinted sheet.
+    """
     if s is None:
         s = _current_s
     tip_px = scale.base_px(s)
+    BLACK = schemes.role_color("BLACK")
+    TEXT = schemes.role_color("TEXT")
+    MUTED = schemes.role_color("MUTED")
+    LINE = schemes.role_color("LINE")
+    LINE_STRONG = schemes.role_color("LINE_STRONG")
+    DIM = schemes.role_color("DIM")
+    ACCENT = schemes.role_color("ACCENT")
+    ACCENT_HI = schemes.role_color("ACCENT_HI")
+    ACCENT_HOVER = schemes.role_color("ACCENT_HOVER")
     return f"""
 QDialog, QWidget {{ background: {BLACK}; color: {TEXT}; }}
 QLabel {{ color: {TEXT}; }}

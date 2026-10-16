@@ -6,7 +6,7 @@ from PyQt6.QtCore import QRegularExpression, QSize, QTimer, Qt
 from PyQt6.QtGui import QColor, QFontMetrics, QIcon, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QLabel, QPushButton, QWidget
 
-from . import scale, style
+from . import scale, schemes, style
 from .widgets import (Histogram, Parade, ScopeButton, Vectorscope, Waveform,
                       ColorWheel, SliderRow, small_button)
 from .dlg_common import WHEELS
@@ -321,6 +321,16 @@ class LayoutMixin:
         self._btn_h.setGeometry(x, y, h_w, _rh)
 
 
+    def _restyle_chrome(self) -> None:
+        """Re-apply the persistent inline chrome styles that captured scheme colours at build time."""
+        _btn_style = (f"background-color: rgba(0,0,0,160); color: {style.TEXT};"
+                      f" border: none; padding: 0;")
+        for b in (getattr(self, "_btn_hist", None), getattr(self, "_btn_parade", None),
+                  getattr(self, "_btn_wave", None), getattr(self, "_btn_h", None),
+                  getattr(self, "_btn_v", None), getattr(self, "_btn_auto", None)):
+            if b is not None:
+                b.setStyleSheet(_btn_style)
+
     def resizeEvent(self, e) -> None:  # noqa: N802
         super().resizeEvent(e)
         if getattr(self, "_building", False):
@@ -333,6 +343,7 @@ class LayoutMixin:
                 style.apply_fonts(self)
                 self._update_main_button_height()
                 self._update_value_widths()
+                self._cr_section._update_wheel_sizes()
                 self.update()
             finally:
                 self._updating_scale = False
@@ -380,8 +391,11 @@ class LayoutMixin:
         self._general_help_btn.setFixedSize(_rh, _rh)
         if hasattr(self, "_chain_order_btn"):      # ⇅ neben MASTER (K35a), gleiche Größe wie „?“
             self._chain_order_btn.setFixedSize(_rh, _rh)
-        if hasattr(self, "_theme_btn"):            # 🎨 Theme-Schalter, gleiche Größe wie „?“
-            self._theme_btn.setFixedSize(_rh, _rh)
+        if hasattr(self, "_scheme_combo"):         # Farbschema-Dropdown
+            _cf = style.font("small")
+            _cfm = QFontMetrics(_cf)
+            _cw = max(_cfm.horizontalAdvance(n) for n in schemes.SCHEMES) + 30
+            self._scheme_combo.setFixedSize(_cw, _rh)
         self._master_row.setFixedHeight(_rh)
         # K25i: update section header button sizes
         for _key, (_hdr, _rows) in self.sections.items():

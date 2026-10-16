@@ -150,8 +150,8 @@ class TestColorReplace(unittest.TestCase):
         y2 = apply(x, vals2)
         torch.testing.assert_close(y2, x)
 
-    def test_src_bright_selects_brightness_range(self):
-        """src_bright=0.5 → nur Midtones (V≈0.5) ersetzt; Highlight (V=1) bleibt."""
+    def test_src_bright_weak_modulation(self):
+        """src_bright modulated nur schwach (0.7..1.0): Midtone voll, Highlight 70%."""
         vals = _defaults()
         vals["cr_0_src_hue"] = 240.0
         vals["cr_0_src_sat"] = 1.0
@@ -161,15 +161,17 @@ class TestColorReplace(unittest.TestCase):
         vals["cr_0_tgt_bright"] = 1.0
         vals["cr_0_intensity"] = 1.0
         vals["cr_0_range"] = 90.0
-        # Midtone-Blau (V=0.5) → Fenster [0.25,0.75] → ersetzt (rot mit V=0.5)
+        # Midtone-Blau (V=0.5) → bright_mod=1.0 → voll ersetzt (rot mit V=0.5)
         x_mid = torch.tensor([[[[0.0, 0.0, 0.5]] * 4] * 4])
         y_mid = apply(x_mid, vals)
         self.assertAlmostEqual(y_mid[0, 0, 0, 0].item(), 0.5, delta=0.01)
         self.assertLess(y_mid[0, 0, 0, 2].item(), 0.01)
-        # Highlight-Blau (V=1.0) → außerhalb des Fensters → unverändert
+        # Highlight-Blau (V=1.0) → bright_mod=0.7 → 70% ersetzt (nicht mehr unverändert)
         x_hi = torch.tensor([[[[0.0, 0.0, 1.0]] * 4] * 4])
         y_hi = apply(x_hi, vals)
-        torch.testing.assert_close(y_hi, x_hi)
+        # 70%-Mix Blau→Rot: R≈0.7, B≈0.3
+        self.assertAlmostEqual(y_hi[0, 0, 0, 0].item(), 0.7, delta=0.01)
+        self.assertAlmostEqual(y_hi[0, 0, 0, 2].item(), 0.3, delta=0.01)
 
     def test_tgt_bright_scales_output_brightness(self):
         """tgt_bright skaliert OUTPUT-Helligkeit: 0.5=dunkler, 1.0=normal, 1.5=geclampt."""

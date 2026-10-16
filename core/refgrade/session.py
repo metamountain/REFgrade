@@ -99,7 +99,7 @@ def open_session(
         new_h, new_w = int(h * scale), int(w * scale)
         source = F.interpolate(
             source_full.permute(0, 3, 1, 2), size=(new_h, new_w),
-            mode="bilinear", align_corners=False,
+            mode="area",
         ).permute(0, 2, 3, 1).clamp(0.0, 1.0)
     else:
         source = source_full
@@ -111,7 +111,7 @@ def open_session(
         if scale < 1.0:
             mask = F.interpolate(
                 mask.unsqueeze(0).unsqueeze(0), size=(new_h, new_w),
-                mode="bilinear", align_corners=False,
+                mode="area",
             ).squeeze()
         ignore = (1.0 - mask).clamp(0.0, 1.0)
 
@@ -309,7 +309,7 @@ def _resolve_pair(s: Session, refs: list[str]) -> tuple[torch.Tensor, torch.Tens
     if after.shape[1:3] != before.shape[1:3]:
         after = F.interpolate(
             after.permute(0, 3, 1, 2), size=before.shape[1:3],
-            mode="bilinear", align_corners=False,
+            mode="area",
         ).permute(0, 2, 3, 1).clamp(0.0, 1.0)
 
     return before, after
@@ -481,6 +481,11 @@ def _section_fns(s: Session, refs: list[str], method: str, vals: dict, mix: dict
                 return y.clamp(0.0, 1.0)
 
             source_fns["curves"] = _curves_pipeline
+
+    # color_replace: HSL-Distanz-Maske, mehrere Instanzen
+    from .color_replace import apply as cr_apply
+    v_cr = section_values(vals, "color_replace")
+    source_fns["color_replace"] = (lambda x, _v=v_cr: cr_apply(x, _v))
 
     return source_fns
 
@@ -782,7 +787,7 @@ def _preview_source(s: Session, max_side: int) -> torch.Tensor:
         new_h, new_w = int(h * scale), int(w * scale)
         img = F.interpolate(
             s.source.permute(0, 3, 1, 2), size=(new_h, new_w),
-            mode="bilinear", align_corners=False,
+            mode="area",
         ).permute(0, 2, 3, 1).clamp(0.0, 1.0)
     else:
         img = s.source
@@ -980,7 +985,7 @@ def crop(
         out_w = int(w * scale)
         result = F.interpolate(
             result.permute(0, 3, 1, 2), size=(out_h, out_w),
-            mode="bilinear", align_corners=False,
+            mode="area",
         ).permute(0, 2, 3, 1).clamp(0.0, 1.0)
 
     return result, scale

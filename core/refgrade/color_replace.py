@@ -64,8 +64,9 @@ def _replace_one(
     """Eine Instanz: Pixel im Hue-Bereich um src_hue werden zu tgt_Farbe gemischt.
 
     src_sat skaliert die Maske: gesättigte Quelle → stärkerer Effekt.
-    src_bright: Proximitätsfilter für die SELECTION — nur Pixel mit V nahe src_bright
-        werden ersetzt (1.0=volle Helligkeit, 0.5=nur Midtones, 0.0=nur Schatten).
+    src_bright: schwach modulierender Helligkeits-Faktor (0.7..1.0) — V nahe src_bright
+        → volle Selektion (1.0), V weit entfernt → nur 0.7. Farbe bleibt primär,
+        Helligkeit ist nur feine Abstimmung (dunkle + helle Varianten werden getroffen).
     tgt_bright: skaliert die OUTPUT-Helligkeit der ersetzten Pixel
         (1.0=normal, <1.0=dunkler, >1.0= heller, geclampt 0..1).
     """
@@ -86,13 +87,16 @@ def _replace_one(
     sat_guard = ((S - 0.02) / 0.13).clamp(0.0, 1.0)
     sat_guard = sat_guard * sat_guard * (3.0 - 2.0 * sat_guard)  # smoothstep
 
-    # Helligkeits-Proximitätsfilter (SELECTION): nur Pixel mit V nahe src_bright matchen.
-    # Halbfenster 0.25: 1.0 → V∈[0.75,1] (volle Helligkeit), 0.5 → V∈[0.25,0.75] (nur Midtones),
-    # 0.0 → V∈[0,0.25] (nur Schatten).
+    # Helligkeits-Proximität (0..1): 1 wenn V ≈ src_bright, 0 wenn |V-src_bright| ≥ 0.25.
+    # Wird unten zu einem schwachen Modulator (0.7..1.0) — kein hartes Selektions-Gate.
     bright_gate = (1.0 - (V - src_bright).abs() * 4.0).clamp(0.0, 1.0)
 
-    # Endgültige Maske: hue-plateau × sat_guard × bright_gate × src_sat × intensity
-    mask = mask * sat_guard * bright_gate * src_sat * intensity
+    # Endgültige Maske: hue-plateau × sat_guard × bright_mod × src_sat × intensity
+    # Helligkeit nur schwach modulierend (0.7..1.0): Farbe ist primär,
+    # Helligkeit nur feine Abstimmung. Dunkle + helle Varianten derselben
+    # Farbe werden beide getroffen.
+    bright_mod = 0.7 + 0.3 * bright_gate
+    mask = mask * sat_guard * bright_mod * src_sat * intensity
 
     # Ziel-Farbe: tgt_hue/tgt_sat, OUTPUT-Helligkeit = Pixel-V × tgt_bright (geclampt 0..1)
     V_tgt = (V * tgt_bright).clamp(0.0, 1.0)
