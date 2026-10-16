@@ -62,7 +62,8 @@ def layout_rects(W: int, H: int, mode: str, iw: int = 0, ih: int = 0) -> dict:
     if mode == "V":
         panel = (m, m, s3 - m, s4 - m)
         strip = (s3, 0, si, s4)
-        bottom = (m, s4, s4 - m, si - m)
+        # right edge of bottom matches right edge of strip (s3 + si)
+        bottom = (m, s4, s3 + si - m, si - m)
         view = (s4 + m, 0, W - s4 - m, H)
         # Squares top-to-bottom: VS, Lights, Mids, Lows
         squares = [

@@ -153,8 +153,8 @@ class LayoutMixin:
             side = max(1, (strip_h - sec_h - gap) // 4)
             # half a row clear of the column: its values must not touch the wheel names
             sq = [(gap, i * side, strip_w - gap, side) for i in range(4)]
-            # never narrower than it needs: on small screens it reaches past the column
-            sec_w = max(strip_w - 2 * gap, sec.sizeHint().width())
+            # pin to strip width so the right edge stays flush with the scope block
+            sec_w = strip_w - 2 * gap
             sec.setGeometry(strip_x + gap, strip_y + 4 * side + gap, sec_w, sec_h)
         else:
             # the strip is exactly four squares wide: shrink them so the chapter fits on the left

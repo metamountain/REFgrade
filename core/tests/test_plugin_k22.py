@@ -207,6 +207,17 @@ class TestScopeBlock(K22TestBase):
         self.assertTrue(d._wheel_strip.isAncestorOf(d.vectorscope),
                         "Vectorscope should be in the wheel strip")
 
+    def test_scope_right_edge_flush_with_strip(self):
+        """V-Layout: rechte Kante des Scope-Blocks == rechte Kante der Wheel-Spalte."""
+        d = self.dlg
+        d._set_layout_mode("V")
+        self.app.processEvents()
+        self.app.processEvents()
+        scope_right = d._scope_block.x() + d._scope_block.width()
+        strip_right = d._wheel_strip.x() + d._wheel_strip.width()
+        self.assertEqual(scope_right, strip_right,
+                         f"Scope right {scope_right} != strip right {strip_right}")
+
 
 class TestSizes1366(K22TestBase):
     """1366×768: Vectorscope ≥ 120, Räder ≥ 70, Spalte scrollt nicht."""

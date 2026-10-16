@@ -84,84 +84,132 @@ def _read_source(path: Path, tmp: Path) -> dict:
     }
 
 
+def _pick_file(parent=None) -> Path | None:
+    from PyQt6.QtWidgets import QFileDialog
+    path_str = QFileDialog.getOpenFileName(
+        parent, "Bild öffnen", str(Path.home()),
+        "Bilder (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.webp)")[0]
+    return Path(path_str) if path_str else None
+
+
 def main() -> None:
-    from PyQt6.QtWidgets import QApplication, QFileDialog
-    from PyQt6.QtGui import QImage
+    from PyQt6.QtWidgets import (
+        QApplication, QFileDialog, QMainWindow, QToolBar,
+        QLabel, QVBoxLayout, QWidget,
+    )
+    from PyQt6.QtGui import QImage, QAction
+    from PyQt6.QtCore import Qt
 
     app = QApplication(sys.argv)
     app.setApplicationName("RefGrade Standalone")
 
-    # 1. Bild wählen
+    # 1. Bild wählen (CLI-Argument oder Dialog)
     if len(sys.argv) > 1:
         img_path = Path(sys.argv[1])
         if not img_path.is_file():
             print(f"Fehler: Datei nicht gefunden: {img_path}")
             sys.exit(1)
     else:
-        path_str = QFileDialog.getOpenFileName(
-            None, "Bild öffnen", str(Path.home()),
-            "Bilder (*.png *.jpg *.jpeg *.tif *.tiff *.bmp *.webp)")[0]
-        if not path_str:
+        picked = _pick_file()
+        if not picked:
             print("Abgebrochen.")
             return
-        img_path = Path(path_str)
+        img_path = picked
 
-    print(f"Bild: {img_path} ({img_path.stat().st_size // 1024} KB)")
-
-    # 2. Worker starten
     port = config.PORT
     python = config.python_exe()
-    print(f"Worker-Port: {port}, Python: {python}")
-    worker_process.ensure(port, python, config.CORE, timeout=30.0)
-    print("Worker läuft.")
 
-    # 3. Source lesen
-    tmp = Path(tempfile.mkdtemp(prefix="refgrade_gui_"))
-    source = _read_source(img_path, tmp)
-    print(f"Source: {source['width']}x{source['height']}")
+    # Hauptfenster mit Toolbar
+    win = QMainWindow()
+    win.setWindowTitle(f"RefGrade — {img_path.name}")
+    win.resize(1400, 900)
+    layout = QVBoxLayout(win)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(0)
 
-    # 4. Session laden
-    resp = worker_client.call(port, "/load", source)
-    source["session"] = resp["session"]
-    print(f"Session: {source['session']}")
+    # Toolbar
+    tb = QToolBar()
+    tb.setMovable(False)
+    btn_open = QAction("Open…", win)
+    btn_open.setShortcut("Ctrl+O")
+    tb.addAction(btn_open)
+    lbl_file = QLabel(f"  {img_path}")
+    tb.addWidget(lbl_file)
+    layout.addWidget(tb)
 
-    # 5. Thumbnail für den Dialog
-    pil_img = Image.open(img_path).convert("RGB")
-    pil_img.thumbnail((2048, 2048))
-    data = pil_img.tobytes("raw", "RGB")
-    qimg = QImage(data, pil_img.width, pil_img.height, QImage.Format.Format_RGB888).copy()
+    dlg_container = QWidget()
+    layout.addWidget(dlg_container)
 
-    # 6. Callbacks
-    def on_ok(raw_path: str, layer_name: str, clarity_info: dict | None = None) -> None:
-        out = img_path.with_name(f"{img_path.stem}_grad.png")
-        arr = np.fromfile(raw_path, dtype=np.uint8).reshape(
-            source["height"], source["width"], 4)
-        rgb = np.ascontiguousarray(arr[..., [2, 1, 0]])
-        Image.fromarray(rgb, mode="RGB").save(out, quality=95)
-        print(f"Gespeichert: {out}")
+    def load_image(path: Path) -> None:
+        nonlocal img_path
+        print(f"Bild: {path} ({path.stat().st_size // 1024} KB)")
+        worker_process.ensure(port, python, config.CORE, timeout=30.0)
+        tmp = Path(tempfile.mkdtemp(prefix="refgrade_gui_"))
+        source = _read_source(path, tmp)
+        print(f"Source: {source['width']}x{source['height']}")
+        resp = worker_client.call(port, "/load", source)
+        source["session"] = resp["session"]
+        print(f"Session: {source['session']}")
 
-    def on_update() -> bool:
-        print("UPDATE: noch nicht implementiert (standalone)")
-        return False
+        pil_img = Image.open(path).convert("RGB")
+        pil_img.thumbnail((2048, 2048))
+        data = pil_img.tobytes("raw", "RGB")
+        qimg = QImage(data, pil_img.width, pil_img.height, QImage.Format.Format_RGB888).copy()
 
-    def save_lut(folder: str, filename: str) -> str | None:
-        path, _ = QFileDialog.getSaveFileName(
-            None, "LUT speichern", str(Path(folder) / filename), "LUT (*.cube)")
-        return path or None
+        def on_ok(raw_path: str, layer_name: str, clarity_info: dict | None = None) -> None:
+            out = path.with_name(f"{path.stem}_grad.png")
+            arr = np.fromfile(raw_path, dtype=np.uint8).reshape(
+                source["height"], source["width"], 4)
+            rgb = np.ascontiguousarray(arr[..., [2, 1, 0]])
+            Image.fromarray(rgb, mode="RGB").save(out, quality=95)
+            print(f"Gespeichert: {out}")
 
-    # 7. Dialog öffnen
-    dlg = RefGradeDialog(
-        qimg, None,
-        client=worker_client.call,
-        source=source,
-        save_lut=save_lut,
-        on_ok=on_ok,
-        on_update=on_update,
-    )
-    dlg.show_screen()
+        def on_update() -> bool:
+            return False
+
+        def save_lut(folder: str, filename: str) -> str | None:
+            p, _ = QFileDialog.getSaveFileName(
+                win, "LUT speichern", str(Path(folder) / filename), "LUT (*.cube)")
+            return p or None
+
+        # Altes Dialog-Widget entfernen
+        old_layout = dlg_container.layout()
+        if old_layout:
+            item = old_layout.takeAt(0)
+            w = item.widget() if item else None
+            if w:
+                w.close()
+                w.deleteLater()
+
+        inner = QVBoxLayout(dlg_container)
+        inner.setContentsMargins(0, 0, 0, 0)
+        dlg = RefGradeDialog(
+            qimg, dlg_container,
+            client=worker_client.call,
+            source=source,
+            save_lut=save_lut,
+            on_ok=on_ok,
+            on_update=on_update,
+        )
+        inner.addWidget(dlg)
+        dlg.show()
+        img_path = path
+        win.setWindowTitle(f"RefGrade — {path.name}")
+        lbl_file.setText(f"  {path}")
+
+    def on_open() -> None:
+        picked = _pick_file(win)
+        if picked:
+            load_image(picked)
+
+    btn_open.triggered.connect(on_open)
+
+    # Erstes Bild laden
+    load_image(img_path)
+    win.show()
 
     try:
-        dlg.exec()
+        app.exec()
     finally:
         worker_process.stop(port)
         print("Worker gestoppt. Tschüss.")
