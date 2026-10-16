@@ -2,12 +2,29 @@
 
 from __future__ import annotations
 
+import os
+import sys
+import types
 import unittest
+from pathlib import Path
 
 import torch
 
 from refgrade.color_replace import apply, MAX_INSTANCES
 from refgrade.sliders import SLIDERS
+
+# ── Qt widget setup (for Bug-fix tests 1-3) ──────────────────────────────────
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+ROOT = Path(__file__).resolve().parents[2]
+_pkg = types.ModuleType("ref_grade")
+_pkg.__path__ = [str(ROOT / "plugin" / "ref_grade")]
+sys.modules.setdefault("ref_grade", _pkg)
+
+from PyQt6.QtWidgets import QApplication  # noqa: E402
+app = QApplication.instance() or QApplication(sys.argv)
+
+from ref_grade.dlg_color_replace import ColorReplaceSection  # noqa: E402
+from ref_grade import style  # noqa: E402
 
 
 def _defaults() -> dict[str, float]:
@@ -197,6 +214,87 @@ class TestColorReplace(unittest.TestCase):
     def test_max_instances(self):
         """MAX_INSTANCES = 8."""
         self.assertEqual(MAX_INSTANCES, 8)
+
+
+class TestColorReplaceWidget(unittest.TestCase):
+    """PyQt6-Widget-Tests: die drei Wheels-Fixes (Removal, Size-Decision, Resize)."""
+
+    def test_close_removes_instance(self):
+        """Fix 1: ×-Button entfernt die Instanz wirklich aus self._instances."""
+        section = ColorReplaceSection()
+        section._on_add()  # 2 Instanzen
+        self.assertEqual(len(section._instances), 2)
+        inst = section._instances[1]
+        inst._on_close()
+        self.assertEqual(len(section._instances), 1)
+        self.assertNotIn(inst, section._instances)
+
+    def test_close_first_instance_noop(self):
+        """Fix 1: Instanz 0 kann nicht entfernt werden (kein ×-Button)."""
+        section = ColorReplaceSection()
+        section._on_add()
+        section._remove_instance(0)  # no-op
+        self.assertEqual(len(section._instances), 2)
+
+    def test_remove_reindexes_remaining(self):
+        """Fix 1: Nach Removal werden verbleibende Instanzen neu indiziert."""
+        section = ColorReplaceSection()
+        section._on_add()
+        section._on_add()  # 3 Instanzen: 0, 1, 2
+        section._remove_instance(1)  # entferne mittlere
+        self.assertEqual(len(section._instances), 2)
+        self.assertEqual(section._instances[0].index, 0)
+        self.assertEqual(section._instances[1].index, 1)
+
+    def test_size_decision_visible_only(self):
+        """Fix 2: Nur sichtbare Instanzen zählen für die Größenentscheidung."""
+        section = ColorReplaceSection()
+        s = style.current_s()
+        natural = round(0.85 * s * 0.7)
+        compact = min(100, natural)
+        self.assertGreater(natural, compact, "Test-Prämisse: natural > compact")
+
+        # 1 Instanz → natural
+        self.assertEqual(section._instances[0].src_wheel.width(), natural)
+
+        # 3 Instanzen → compact
+        section._on_add()
+        section._on_add()
+        self.assertEqual(section._instances[0].src_wheel.width(), compact)
+
+        # 1 entfernen → 2 sichtbar → zurück zu natural
+        section._remove_instance(2)
+        self.assertEqual(len(section._instances), 2)
+        self.assertEqual(section._instances[0].src_wheel.width(), natural)
+
+    def test_resize_updates_wheel_sizes(self):
+        """Fix 3: _update_wheel_sizes reagiert auf Scale-Change (was resizeEvent triggert)."""
+        section = ColorReplaceSection()
+        section._on_add()
+        section._on_add()  # 3 Instanzen → compact
+        old_s = style.current_s()
+        try:
+            new_s = old_s * 1.5
+            style.set_scale(new_s)
+            section._update_wheel_sizes()
+            new_natural = round(0.85 * new_s * 0.7)
+            new_compact = min(100, new_natural)
+            self.assertEqual(section._instances[0].src_wheel.width(), new_compact)
+        finally:
+            style.set_scale(old_s)
+
+    def test_resize_grows_wheels(self):
+        """Fix 3: Vergrößerung des Fensters vergrößert die Wheels."""
+        section = ColorReplaceSection()
+        old_s = style.current_s()
+        try:
+            large_s = old_s * 2.0
+            style.set_scale(large_s)
+            section._update_wheel_sizes()
+            large_natural = round(0.85 * large_s * 0.7)
+            self.assertEqual(section._instances[0].src_wheel.width(), large_natural)
+        finally:
+            style.set_scale(old_s)
 
 
 if __name__ == "__main__":
