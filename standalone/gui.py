@@ -211,7 +211,10 @@ def main() -> None:
         qimg = QImage(data, pil_img.width, pil_img.height, QImage.Format.Format_RGB888).copy()
 
         def on_ok(raw_path: str, layer_name: str, clarity_info: dict | None = None) -> None:
-            default = str(path.with_name(f"{path.stem}_grad.png"))
+            # original name + "_rg", same format where we can write it (user 2026-10-17)
+            ext = path.suffix.lower() if path.suffix.lower() in (
+                ".png", ".jpg", ".jpeg", ".tif", ".tiff") else ".png"
+            default = str(path.with_name(f"{path.stem}_rg{ext}"))
             out, fmt = QFileDialog.getSaveFileName(
                 win, "Save graded image", default,
                 "PNG (*.png);;JPEG (*.jpg *.jpeg);;TIFF (*.tif *.tiff)")

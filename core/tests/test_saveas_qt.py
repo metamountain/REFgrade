@@ -55,7 +55,7 @@ class TestSaveAs(unittest.TestCase):
             self.dlg._do_saveas()
         folder.assert_not_called()
         save.assert_called_once()
-        self.assertTrue(save.call_args[0][2].endswith("photo_grad.png"))
+        self.assertTrue(save.call_args[0][2].endswith("photo_rg.png"))
         ok.assert_called_once()
         self.assertEqual(self.dlg._saveas_out, target + ".jpg")
         self.assertEqual(Path(self.dlg._settings.value("saveas_folder")), Path(self.tmp.name))

@@ -401,7 +401,8 @@ class SliderRow(QWidget):
         self.setFixedHeight(_rh)
         self.slider = _RelativeSlider(lo, hi, step)
         self.slider.setRange(0, round((hi - lo) / step))
-        self.slider.setMinimumWidth(round(6 * _rh))
+        self._slider_min = round(6 * _rh)
+        self.slider.setMinimumWidth(self._slider_min)
         if track:                                # superslim colour track instead of grey
             self.slider.setStyleSheet(style.track_sheet(track))
         self.value_label = QLabel()
@@ -432,6 +433,36 @@ class SliderRow(QWidget):
         row.addWidget(self.value_label)
         self.slider.valueChanged.connect(self._on_change)
         self.set_value(default)
+
+    def resizeEvent(self, e) -> None:  # noqa: N802
+        """Never let the layout overlap: in a row narrower than its minimum, QHBoxLayout laid
+        the "?" over the slider's right end and the handle vanished at max (user 2026-10-16).
+        The slider keeps its 6-row minimum where it fits and gives up the rest otherwise."""
+        self._fit_slider()
+        super().resizeEvent(e)
+
+    def _fit_slider(self) -> None:
+        lay = self.layout()
+        others = [lay.itemAt(i).widget() for i in range(lay.count())]
+        others = [w for w in others if w is not None and w is not self.slider
+                  and (w is self.help_btn or not w.isHidden())]
+        widths = {w: (w.maximumWidth() if w.minimumWidth() == w.maximumWidth()
+                      else w.minimumSizeHint().width()) + lay.spacing() for w in others}
+        avail = self.width() - sum(widths.values())
+        if self.help_btn is not None:
+            # too narrow for slider and "?" (1366×720, "Channels act on"): the "?" goes, its
+            # short text moves to the slider's tooltip — never a 2 px slider
+            _rh = scale.row_h(style.current_s())
+            crowded = avail < 3 * _rh
+            self.help_btn.setHidden(crowded)
+            self.slider.setToolTip(self.help_btn.toolTip() if crowded else "")
+            if crowded:
+                avail += widths[self.help_btn]
+        want = max(0, min(self._slider_min, avail))
+        if self.slider.minimumWidth() != want:
+            self.slider.setMinimumWidth(want)
+            lay.invalidate()
+            lay.activate()
 
     def _show_help_popup(self, *_args) -> None:
         """K40a: popup at the "?" button: short (bold), what, tip (italic); closes on click away."""
@@ -470,6 +501,7 @@ class SliderRow(QWidget):
             if isinstance(widget, QLabel) and widget is not self.value_label:
                 widget.setFixedWidth(w)
                 break
+        self._fit_slider()
 
     def set_value_width(self, w: int) -> None:
         """Update the value label's fixed width (call when the scale changes)."""
@@ -478,6 +510,7 @@ class SliderRow(QWidget):
             if self.help_btn is not None:      # K40a: keep the "?" button square at row height
                 _hs = scale.row_h(style.current_s())
                 self.help_btn.setFixedSize(_hs, _hs)
+            self._fit_slider()
 
     def value(self) -> float:
         return self.lo + self.slider.value() * self.step

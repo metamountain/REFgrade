@@ -676,7 +676,7 @@ class SectionsMixin:
 
     def _enforce_no_scroll(self) -> None:
         """Collapse the least recently touched scrolling-list section until the panel fits.
-        WHEELS is never auto-collapsed and the last-touched one is kept. CURVES is collapsed
+        WHEELS and TONE are never auto-collapsed and the last-touched one is kept. CURVES is collapsed
         LAST (K29e): the editor keeps its 2:1 minimum, so collapsing another section is
         preferred over squashing the curve; only if the panel still overflows with every
         other section closed does CURVES itself collapse."""
@@ -688,8 +688,9 @@ class SectionsMixin:
                 self._touch_order: list[str] = list(getattr(self, "_scroll_keys", ()))
             lay = self.panel.layout()
             limit = self.panel.height()
+            # TONE (the Lightroom "Basic" panel) stays open like WHEELS (user 2026-10-16)
             order = [k for k in self._touch_order[:-1]
-                     if k in self._scroll_keys and k != "wheels" and k != "curves"]
+                     if k in self._scroll_keys and k not in ("wheels", "curves", "tone")]
             for key in order:
                 if self._panel_min_height(lay) <= limit:
                     return
@@ -716,13 +717,14 @@ class SectionsMixin:
         auto = getattr(self, "_auto_collapsed", [])
         lay = self.panel.layout()
         limit = self.panel.height()
-        while auto:
-            key = auto[-1]
+        # latest first; one that does not fit stays closed, the next smaller one may still fit
+        # (TONE always open left CURVES closed and LUT/REFERENCE were never tried, 2026-10-17)
+        for key in reversed(list(auto)):
             self._set_section_collapsed(key, False)
             if self._panel_min_height(lay) > limit:
                 self._set_section_collapsed(key, True)
-                break
-            auto.pop()
+                continue
+            auto.remove(key)
 
 
     def _panel_min_height(self, lay) -> int:

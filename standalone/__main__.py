@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
                         default="reinhard", help="Grading method (default: reinhard)")
     parser.add_argument("--no-fit", action="store_true",
                         help="Skip auto-fit; use default slider values")
-    parser.add_argument("-o", "--output", help="Output image file (default: <input>_graded.<ext>)")
+    parser.add_argument("-o", "--output", help="Output image file (default: <input>_rg.<ext>)")
     parser.add_argument("--cube", metavar="PATH", help="Also export a .cube LUT to this path")
     parser.add_argument("--device", choices=("cpu", "cuda"),
                         help="Force device (default: auto)")
@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         out_path = Path(args.output)
     else:
         suffix = src_path.suffix or ".png"
-        out_path = src_path.with_name(f"{src_path.stem}_graded{suffix}")
+        out_path = src_path.with_name(f"{src_path.stem}_rg{suffix}")
 
     # Device
     if args.device == "cuda":

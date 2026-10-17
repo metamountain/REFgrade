@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 
-from PyQt6.QtCore import QRectF, Qt, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (QGridLayout, QLabel, QPushButton,
                               QSizePolicy, QToolButton, QVBoxLayout, QWidget)
@@ -23,6 +23,8 @@ class BrightBar(QWidget):
     """
 
     changed = pyqtSignal(str, float)
+    HANDLE = 10          # = QSlider::handle in style.py
+    STRIP = 4
 
     def __init__(self, name: str, default: float = 0.5, tip: str = "",
                  parent: QWidget | None = None):
@@ -30,7 +32,11 @@ class BrightBar(QWidget):
         self.name = name
         self._value = default
         self._drag = False
-        self.setFixedHeight(8)  # slim strip: a compact gradient line, not a full slider row
+        # slim gradient strip with the round handle of the normal sliders (user 2026-10-17);
+        # the widget is as tall as the handle, the strip itself stays thin
+        self.setFixedHeight(self.HANDLE + 2)
+        self.setMouseTracking(True)
+        self._hover = False
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         if tip:
@@ -47,8 +53,17 @@ class BrightBar(QWidget):
             self.changed.emit(self.name, v)
 
     def _set_from_x(self, x: float) -> None:
-        w = max(1, self.width())
-        self.set_value(x / w)
+        r = self.HANDLE / 2
+        w = max(1.0, self.width() - 2 * r)
+        self.set_value((x - r) / w)
+
+    def enterEvent(self, _e) -> None:  # noqa: N802
+        self._hover = True
+        self.update()
+
+    def leaveEvent(self, _e) -> None:  # noqa: N802
+        self._hover = False
+        self.update()
 
     def mousePressEvent(self, e) -> None:  # noqa: N802
         if e.button() == Qt.MouseButton.LeftButton:
@@ -68,19 +83,23 @@ class BrightBar(QWidget):
 
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
-        grad = QLinearGradient(0, 0, w, 0)
+        r = self.HANDLE / 2
+        y0 = (h - self.STRIP) / 2
+        grad = QLinearGradient(r, 0, w - r, 0)
         grad.setColorAt(0.0, QColor(style.RAMP_BLACK))
         grad.setColorAt(1.0, QColor(style.RAMP_WHITE))
-        p.fillRect(0, 0, w, h, QBrush(grad))
-        hx = int(round(self._value * (w - 1)))
-        # handle: light core with dark edges → visible on both the black and white ends
-        p.setPen(QPen(QColor(style.RAMP_BLACK), 4))
-        p.drawLine(hx, 0, hx, h)
-        p.setPen(QPen(QColor(style.ACCENT_HI), 2))
-        p.drawLine(hx, 0, hx, h)
+        strip = QRectF(r, y0, w - 2 * r, self.STRIP)
+        p.fillRect(strip, QBrush(grad))
         p.setPen(QPen(QColor(style.LINE_STRONG), 1))
-        p.drawRect(QRectF(0.5, 0.5, w - 1, h - 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRect(strip.adjusted(0.5, 0.5, -0.5, -0.5))
+        # round handle like the normal sliders; a dark rim keeps it visible on the white end
+        cx = r + self._value * (w - 2 * r)
+        p.setPen(QPen(QColor(style.RAMP_BLACK), 1))
+        p.setBrush(QColor(style.ACCENT_HI if self._hover else style.TEXT))
+        p.drawEllipse(QPointF(cx, h / 2), r - 0.5, r - 0.5)
 
 
 class _ColorSquare(QWidget):

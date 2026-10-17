@@ -120,12 +120,21 @@ class TestInitialState(K25cTestBase):
         closed = [k for k in ("rgb", "tone", "hsl", "curves", "lut")
                   if self.dlg.sections[k][0].is_collapsed()]
         # K29e (user 2026-10-11): CURVES is collapsed LAST — rather close the others than
-        # squash the curve below 2:1; it may only be closed when everything else is too
+        # squash the curve below 2:1. 2026-10-17: TONE is never auto-collapsed and smaller
+        # sections reopen into space CURVES cannot use, so CURVES may only be closed when it
+        # does not fit even with every other collapsible section closed.
         if "curves" in closed:
-            self.assertEqual(set(closed), {"rgb", "tone", "hsl", "curves", "lut"} & set(
-                k for k in ("rgb", "tone", "hsl", "curves", "lut")
-                if self.dlg._contents.get(k) is not None),
-                "CURVES nur zu, wenn alle anderen schon zu sind")
+            opened = [k for k in ("rgb", "hsl", "lut", "color_replace")
+                      if self.dlg._contents.get(k) is not None
+                      and not self.dlg.sections[k][0].is_collapsed()]
+            for k in opened:
+                self.dlg._set_section_collapsed(k, True)
+            self.dlg._set_section_collapsed("curves", False)
+            self.assertGreater(self.dlg._panel_min_height(lay), limit,
+                               "CURVES zu, obwohl es bei geschlossenen Nachbarn passt")
+            self.dlg._set_section_collapsed("curves", True)
+            for k in opened:
+                self.dlg._set_section_collapsed(k, False)
         for key in closed:
             self.dlg._set_section_collapsed(key, False)
             self.assertGreater(self.dlg._panel_min_height(lay), limit,

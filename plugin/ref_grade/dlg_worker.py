@@ -100,7 +100,14 @@ class WorkerMixin:
     def _max_side(self) -> int:
         """Longer side of the image area in device pixels; half during drag (K29c)."""
         r = self.view.devicePixelRatioF()
-        full = max(1, max(int(self.view.width() * r), int(self.view.height() * r)))
+        full = max(self.view.width() * r, self.view.height() * r)
+        lg = getattr(self.view, "logical", None)
+        if lg is not None and not lg.isEmpty():
+            # the longer side as fitted into the view: a portrait image in a wide view came
+            # 2.5× too large and Qt's bilinear downscale aliased; the core scales with "area"
+            # (Antialiasing, user 2026-10-16)
+            full = min(full, max(lg.width(), lg.height()) * self.view.fit_zoom() * r)
+        full = max(1, int(full))
         return full // 2 if self._dragging else full
 
     def _lut_size(self) -> int:
@@ -443,12 +450,16 @@ class WorkerMixin:
 
     def _do_saveas(self) -> None:
         """One file dialog (user 2026-10-16: the extra folder step was annoying); the
-        folder is remembered, the name defaults to <source>_grad.png."""
+        folder is remembered, the name defaults to the original name + "_rg" with its own
+        format where it is one of ours, else .png (user 2026-10-17)."""
         last = self._settings.value("saveas_folder", str(config.ROOT))
         src_path = self._source.get("path") if self._source else None
         stem = Path(src_path).stem if src_path else "result"
+        ext = Path(src_path).suffix.lower() if src_path else ""
+        if ext not in (".png", ".jpg", ".jpeg", ".tif", ".tiff"):
+            ext = ".png"
         out, flt = QFileDialog.getSaveFileName(
-            self, "Save graded image", str(Path(last) / f"{stem}_grad.png"),
+            self, "Save graded image", str(Path(last) / f"{stem}_rg{ext}"),
             ";;".join(self._SAVEAS_FILTERS))
         if not out:
             return
