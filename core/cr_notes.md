@@ -133,3 +133,11 @@ keinen Key `"color_replace"` hatte.
 ### Verifikation
 
 `python -m pytest core/tests/ -q` → **1004 passed, 36 skipped, 1265 subtests, 0 failed**.
+
+## 2026-10-17: CR startet wieder ON (Debug-Reste entfernt)
+
+Commit `89270b5` (2026-10-15, „CR fixes … pipeline fix") hatte in `dlg_color_replace.py`
+`SectionHeader(..., on=True)` auf `on=False` umgestellt und so stehen lassen → die Sektion
+startete deaktiviert. Nutzerwunsch (seit `afd2dc6`): CR startet **ON**. Fix: `on=True`
+(`dlg_color_replace.py`, `ColorReplaceSection.__init__`). Effekt bleibt No-Op, solange
+`intensity = 0` — ON/OFF-Schalter und Intensität sind unabhängig.

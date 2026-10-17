@@ -491,7 +491,7 @@ class ColorReplaceSection(QWidget):
         box.setContentsMargins(0, 0, 0, 2)
         box.setSpacing(1)
 
-        self.header = SectionHeader("color_replace", "Color Replace", on=False)
+        self.header = SectionHeader("color_replace", "Color Replace", on=True)
         box.addWidget(self.header)
 
         self._content = QWidget()

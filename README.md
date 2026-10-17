@@ -40,6 +40,9 @@ Current version: see `plugin/ref_grade/version.py`.
 - **A "?" help button at every slider.**
 - **Colour schemes:** Black, Dark Grey, Light Grey, White.
 
+**Most proud of:** the **live COLOR REPLACE** — pick a colour and watch it swap live as you work.
+It's a beast.
+
 Exported `.cube` files go to the folder you choose in the file dialog.
 
 ## Installation — standalone

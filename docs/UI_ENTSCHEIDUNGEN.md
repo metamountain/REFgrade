@@ -221,6 +221,12 @@ UI (Wheels, BrightBars, Sliders)
 - **Schema:** `schemes.apply_scheme(self)` im `__init__`, `win_chrome.apply` in `showEvent`
   (gleicher Weg wie Hauptdialog/Standalone).
 
+## 2026-10-17 — Color Replace startet wieder ON
+- **Bug:** Commit `89270b5` (2026-10-15, Debug-Runde „CR fixes … pipeline fix") hatte
+  `dlg_color_replace.py` von `on=True` auf `on=False` umgestellt und so stehen lassen —
+  die Sektion startete seither deaktiviert. Nutzerwunsch (seit `afd2dc6`, 2026-10-14):
+  CR startet **ON**. Fix: `SectionHeader("color_replace", "Color Replace", on=True)`.
+
 ## 2026-10-17 — Offene Nutzerwünsche vom 2026-10-16 (Opus)
 - **TONE immer offen:** TONE (Exposure … Dehaze = Lightroom „Basic") wird wie WHEELS **nie**
   automatisch eingeklappt (`_enforce_no_scroll`). Name bleibt TONE. Position bleibt an 3. Stelle,
