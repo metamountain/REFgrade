@@ -21,7 +21,8 @@ def _gaussian_kernel(sigma: float, device: torch.device, dtype: torch.dtype) -> 
     return g / g.sum()
 
 
-def apply(img: torch.Tensor, clarity: float, full_size: int) -> torch.Tensor:
+def apply(img: torch.Tensor, clarity: float, full_size: int,
+          scale: float | None = None) -> torch.Tensor:
     """Apply clarity (local contrast) to an sRGB image.
 
     Args:
@@ -37,7 +38,9 @@ def apply(img: torch.Tensor, clarity: float, full_size: int) -> torch.Tensor:
 
     amount = CLARITY_AMOUNT * clarity
     h, w = img.shape[1], img.shape[2]
-    preview_scale = max(h, w) / full_size
+    # scale: pixels of `img` per original pixel; a full-resolution crop passes 1.0 (its size
+    # says nothing about the original's) — debug round 2026-10-17
+    preview_scale = max(h, w) / full_size if scale is None else scale
     half_size = CLARITY_RADIUS * full_size * preview_scale
     sigma = 0.3 * half_size + 0.3
     kernel = _gaussian_kernel(sigma, img.device, img.dtype)

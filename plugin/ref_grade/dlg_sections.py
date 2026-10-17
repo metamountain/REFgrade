@@ -521,6 +521,10 @@ class SectionsMixin:
                 hue.set_value(hue.default)
                 sat.set_value(sat.default)
                 light.set_value(light.default)
+        if key == "color_replace" and hasattr(self, "_cr_section"):
+            # its rows are not in self.sections (the header ↺ resets it via its own signal);
+            # RESET at the bottom left the wheels/intensity as they were (debug round 2026-10-17)
+            self._cr_section._on_reset(key)
         if key == "curves":
             for ch in CHANNELS:
                 self.curves_editor.set_curve(ch, [[0.0, 0.0], [1.0, 1.0]])

@@ -1,134 +1,136 @@
-# REFgrade — Colour Grading by Reference (Krita plugin · standalone GUI)
+# REFgrade — Colour Grading by Reference (Krita plugin · standalone app)
 
 > **Hobby project — not bug-free.** Tested only on Windows 11 with Krita 6.0.4 (beta) at
 > 2560×1440. Expect rough edges, crashes, and things that simply don't work yet.
 > If you hit a problem, please file an issue on GitHub — bug reports, crash logs and
 > "this button does nothing" are all equally welcome.
 
-
-Transfers the light and color mood of a reference image onto your image in Krita.
-Adjust the result with grading sliders, apply it as a new layer, or export as a 3D LUT (.cube).
+REFgrade transfers the light and colour mood of one or more reference images onto your image and
+lets you fine-tune the result with grading controls. It runs as a **Krita plugin** (the result
+becomes a new layer) and as a **standalone app** without Krita. The grading can also be exported as a
+3D LUT (`.cube`).
 
 <a href="docs/screenshot.jpg"><img src="docs/screenshot.jpg" width="100%" alt="REFgrade dialog: grading controls, colour wheels and scopes beside the graded image"></a>
 
-## Features
+Current version: see `plugin/ref_grade/version.py`.
 
-- Reference-based color grading (Reinhard, MKL, Zonal, Pair)
-- 11 sections: WB/Color, Tone, RGB, HSL, Color Replace, Curves, LUT, Reference, …
-- 8 Color Replace instances (HSL-distance mask)
-- 33³ LUT engine (GPU)
-- Scopes: Parade, Waveform, Vectorscope, Histogram
-- 3 Color Wheels (Lift/Gamma/Gain)
-- 3 UI Schemes (Carbon, Anthrazite, Paper)
-- Krita plugin + standalone GUI
+## Installation — standalone
 
-## Prerequisites
+1. Download the release ZIP (`refgrade-<version>.zip`) from the GitHub Releases page and extract it.
+2. Double-click `refgrade.bat`.
 
-- Krita 6.0.4 (Beta, Qt6), Windows 11
-- An NVIDIA GPU is recommended for reasonable render times. Without one, RefGrade
-  falls back to CPU (much slower, especially on large images).
+On the first start `refgrade.bat` downloads `uv`, installs Python 3.12 and PyQt6 (plus numpy and
+pillow) into the runtime folder — no Python installation and no admin rights needed. The GUI then
+opens the **torch setup dialog**: it detects your GPU and pre-selects the matching PyTorch build
+(see [System requirements](#system-requirements)); you can change the build and the install location
+and watch a live log. Your system Python is not modified.
 
-That's it. On first use, RefGrade downloads and sets up its own Python runtime
-(PyTorch + dependencies) into `%LOCALAPPDATA%\RefGrade\runtime`. No manual Python
-installation is needed.
+```
+refgrade.bat [image.jpg]       optional: open this image directly
+refgrade.bat --setup           show the setup dialog again (set up the runtime anew / change location)
+```
 
-## Installation
+The runtime lives in `%LOCALAPPDATA%\RefGrade\runtime` unless you choose another folder in the setup
+dialog (stored in `%APPDATA%\RefGrade\config.json`; the environment variable `REFGRADE_RUNTIME`
+overrides it).
 
-1. Download `ref_grade-x.y.z.zip` from the GitHub Releases page. Do not unzip it.
+**Use existing Python:** the dialog's **Use existing Python…** button takes your own Python that can
+import `torch`, `numpy`, `kornia` and `PIL` (saved as `python_exe` in `config.json`) instead of
+installing a runtime.
+
+## Installation — Krita plugin
+
+1. Download the plugin ZIP from the GitHub Releases page. Do not unzip it.
 2. In Krita: **Tools → Scripts → Import Python Plugin from File…** and choose the ZIP.
 3. Confirm the activation question, then restart Krita.
-4. Open RefGrade from the **Filter → RefGrade** menu with a paint layer active.
-5. **First time only:** a dialog appears asking to install the runtime. Choose
-   **GPU** (recommended, several GB download) or **CPU** (smaller, slower) and click
-   **Install**. This downloads `uv`, creates an isolated Python 3.12 environment with
-   PyTorch, and stores it in `%LOCALAPPDATA%\RefGrade\runtime`. Your system Python is
-   not modified. The dialog shows a live log; you can cancel at any time.
-6. Once the install finishes, the RefGrade dialog opens normally.
+4. Open REFgrade from **Filter → RefGrade** with a paint layer active.
+5. **First time only:** the runtime dialog appears (same dialog as in the standalone app — detected
+   build, install location, **Use existing Python…**). Install, then the REFgrade dialog opens.
 
-### Using your own Python (optional)
+**Update:** the dialog's **UPDATE** button checks GitHub and replaces the plugin. This works for the
+ZIP installation only; with a git checkout use `git pull`. Alternatively import the new ZIP the same
+way *before* opening REFgrade (once opened, its worker keeps files busy until Krita closes).
 
-If you already have a Python 3.12 with `torch`, `numpy`, `kornia` and `pillow`
-installed, you can skip the built-in runtime. Set the environment variable
-`REFGRADE_PYTHON` to the full path of your interpreter (e.g. `C:\Python312\python.exe`)
-as a **user** environment variable, then restart Krita. RefGrade will verify the
-packages on startup and show an error if something is missing.
+**Uninstall:** **Settings → Configure Krita → Python Plugin Manager**, untick REFgrade, restart.
+To remove it completely also delete `pykrita\ref_grade`, `pykrita\ref_grade.desktop` and
+`actions\ref_grade.action` from Krita's resource folder (**Settings → Manage Resources → Open Resource
+Folder**, usually `%APPDATA%\krita`). To free the disk space, delete the runtime folder.
 
-For GPU use with your own Python, install the CUDA build of torch that matches your
-driver ([pytorch.org](https://pytorch.org/get-started/locally/)):
+## Using the standalone app
 
-```
-py -3.12 -m pip install torch --index-url https://download.pytorch.org/whl/cu130
-py -3.12 -m pip install numpy kornia pillow
-```
+- Starts **maximized with an empty window**. Load an image with **Open image…** / `Ctrl+O`,
+  `Ctrl+V` (paste a screenshot) or by dragging a file onto the window.
+- **LOAD** switches to another image and **keeps the current grading**.
+- **SAVE** writes `<name>_rg.<format>` next to the original (PNG, JPEG or TIFF; other source formats
+  are saved as PNG) without a dialog; the grading stays open. A pasted screenshot asks where to save.
+- **SAVE AS** opens a file dialog.
+- **CANCEL** closes the image. `Esc` does not close it.
 
-**Update:** restart Krita and, *before* opening RefGrade, import the new ZIP the same way, confirm the
-overwrite, restart Krita. (While RefGrade has been opened, its worker keeps files in the plugin folder busy
-until Krita closes, and the overwrite can fail.)
+In Krita: load references into the slots, choose a method (Reinhard / MKL / Zonal / Pair), press
+**FIT** to auto-match (not for Pair, which learns the LUT from a before/after pair), adjust, and press
+**OK** to apply as a new layer. **SOLO** isolates a section; **CANCEL** closes without applying.
 
-**Uninstall:** **Settings → Configure Krita → Python Plugin Manager**, untick RefGrade, restart.
-To remove it completely, also delete `pykrita\ref_grade`, `pykrita\ref_grade.desktop` and
-`actions\ref_grade.action` from Krita's resource folder (**Settings → Manage Resources → Open Resource Folder**;
-usually `%APPDATA%\krita`). To free the disk space used by the runtime, delete
-`%LOCALAPPDATA%\RefGrade\runtime` (several GB with the GPU build).
+## Features
 
-## Usage (6 lines)
+- **Sections:** REFERENCE, WB · COLOR, TONE (including **Recover** and **Reconstruct** for blown
+  highlights), RGB, CURVES, WHEELS (Lift / Gamma / Gain), HSL, LUT (load `.cube` files, export the
+  grading as `.cube`), COLOR REPLACE (several instances, HSL-distance mask).
+- A **"?"** help button at every slider.
+- **Colour schemes:** Black, Dark Grey, Light Grey, White.
+- **Scopes:** Histogram, Parade, Waveform, Vectorscope.
 
-1. Open the RefGrade dialog from the Filter menu.
-2. Load one or more reference images into the slots (drag & drop or click).
-3. Choose a method (Reinhard / MKL / Zonal / Pair) and press FIT to auto-match
-   (FIT is not available for Pair — it learns the LUT directly from a before/after pair).
-4. Fine-tune with the sliders and color wheels; use SOLO to isolate a section.
-5. Press OK to apply as a new layer, or LUT… to export a .cube file.
-6. CANCEL closes without applying.
+Exported `.cube` files go to the folder you choose in the file dialog.
 
-## Standalone (ohne Krita)
+## System requirements
 
-Extract the release ZIP (`dist/refgrade-<version>.zip`) and run `refgrade.bat`:
+- Windows (tested on Windows 11). Krita 6.0.4 (Qt6) for the plugin; the standalone app needs no Krita.
+- A GPU is optional but makes rendering much faster. The setup dialog picks the build:
 
-```bash
-refgrade.bat [image.jpg]
-```
+| Build | Chosen for | Download (approx.) |
+|-------|------------|--------------------|
+| NVIDIA CUDA 13 | NVIDIA GPU, driver reporting CUDA 13 or newer | 3.0 GB |
+| NVIDIA CUDA 12 | NVIDIA GPU, driver reporting CUDA 12.6–12.x (older GPUs only) | 2.8 GB |
+| AMD ROCm (preview) | supported Radeon RX 7000/9000 and certain PRO / Ryzen AI GPUs | 2.1 GB |
+| Intel Arc (XPU) | Intel Arc | 1.5 GB |
+| CPU only | no supported GPU, or driver too old (much slower on large images) | 0.25 GB |
 
-- First start bootstraps a Python 3.12 runtime (via `uv`) — no Python or admin rights needed.
-- Opens the full RefGrade GUI with the given image (no argument → file dialog).
-- Works without a Krita installation.
-- `refgrade.bat --setup` opens the GUI and shows the install dialog (new setup / change location).
-- PyTorch is installed by the GUI on first start (see the install dialog).
-
-## LUT output
-
-Exported .cube files are saved to the folder you choose in the file dialog
-(default: `%APPDATA%\krita\luts`).
+- Free disk space: the setup dialog requires about twice the download size at the install location,
+  which must be writable and have an ASCII-only path.
 
 ## Troubleshooting
 
-- **Plugin missing from the menu:** enable it in **Settings → Configure Krita → Python Plugin Manager** and restart Krita.
-- **Install dialog appears every time:** the runtime check failed. Open a terminal and run
+- **Plugin missing from the menu:** enable it in **Settings → Configure Krita → Python Plugin Manager**
+  and restart Krita.
+- **Setup dialog appears every time:** the runtime check failed. Run
   `%LOCALAPPDATA%\RefGrade\runtime\venv\Scripts\python.exe -c "import torch, numpy, kornia, PIL"`.
-  If that fails, delete `%LOCALAPPDATA%\RefGrade\runtime` and let RefGrade reinstall.
-- **Install fails (network error):** the download of `uv` or PyTorch was interrupted.
-  Close the dialog, check your connection, and retry. Partial downloads are cleaned up automatically.
-- **GPU not detected:** make sure your NVIDIA driver is up to date. RefGrade detects the
-  CUDA version via `nvidia-smi`; if it reports CUDA < 12.6 the CPU build is used instead.
-  The install dialog shows which flavor was chosen and why.
-- **Worker does not start** (dialog shows an error): check the worker log at
-  `%TEMP%\ref_grade\worker.log` for the full traceback.
-- **Dialog shows "ERROR · …":** check the same log for details.
+  If that fails, delete the runtime folder and run the setup again.
+- **Install fails (network error):** the download of `uv` or PyTorch was interrupted. Check your
+  connection and retry.
+- **GPU not detected:** update your GPU driver. For NVIDIA the CUDA version is read from `nvidia-smi`;
+  the setup dialog shows which build was chosen and why. A driver too old for the GPU build falls back to CPU.
+- **Worker does not start / dialog shows "ERROR · …":** see `%TEMP%\ref_grade\worker.log`.
 
-## For developers
+## Development
 
-- `python install.py` links the repository into Krita (a directory junction to `plugin/ref_grade`, plus the
-  `.desktop` and `.action` files); `python install.py --uninstall` removes it; `--dry-run` only prints the targets.
-  In this layout the plugin uses `core/` from the repository.
-- `python tools/build_zip.py` builds `dist/ref_grade-<version>.zip` (version from `core/refgrade/version.py`),
-  with the worker bundled as `ref_grade/core`.
-- **Never import the ZIP while the dev junction exists** — the importer would overwrite the repository's
-  plugin files through the junction. Run `python install.py --uninstall` first.
+```
+python -m pytest core/tests -q            # tests (or core/tests/run_tests.py)
+python build/make_release_zip.py          # dist/refgrade-<version>.zip (standalone, source only)
+python build/make_plugin_zip.py           # dist/ref_grade_plugin.zip (Krita plugin with bundled core)
+```
 
-## Documentation
+- `python install.py` links the repository into Krita (a directory junction to `plugin/ref_grade`, plus
+  the `.desktop` and `.action` files); `--uninstall` removes it, `--dry-run` only prints the targets.
+  **Never import the plugin ZIP while the junction exists** — it would overwrite the repository's files.
+  Run `python install.py --uninstall` first.
+
+### Documentation
 
 - [Features](docs/FUNKTIONEN.md)
 - [UI Decisions](docs/UI_ENTSCHEIDUNGEN.md)
 - [Torch/ONNX Facts](docs/TORCH_ONNX_FACTS.md)
 - [Concept](KONZEPT.md)
 - [Backlog](BACKLOG.md)
+
+## License
+
+MIT — see [LICENSE](LICENSE).

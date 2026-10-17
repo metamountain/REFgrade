@@ -110,28 +110,28 @@ class WhiteBalanceMixin:
                          f"tint {result.get('tint', 0):+.2f}")
 
 
+    def _sample_view(self, pos, img) -> tuple[int, int, int] | None:
+        """Pixel of `img` (the whole picture at preview size) under widget point `pos`, through
+        the view's zoom/pan like _wb_pick_at. The old letterbox maths assumed the fitted view:
+        zoomed in or panned, the pipettes read another pixel (debug round 2026-10-17)."""
+        v = self.view
+        if img is None or img.isNull() or v.logical.isEmpty() or v.zoom <= 0:
+            return None
+        x = v.offset.x() + pos.x() / v.zoom
+        y = v.offset.y() + pos.y() / v.zoom
+        if not (0 <= x < v.logical.width() and 0 <= y < v.logical.height()):
+            return None
+        px = min(int(x * img.width() / v.logical.width()), img.width() - 1)
+        py = min(int(y * img.height() / v.logical.height()), img.height() - 1)
+        c = img.pixel(px, py)
+        return (c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF
+
     def _pipette(self, pos) -> None:
         """Ctrl+Click: liest Pixel aus _last_preview, setzt Punkt im Hue-Tab."""
-        if self._last_preview is None or self._last_preview.isNull():
+        rgb = self._sample_view(pos, self._last_preview)
+        if rgb is None:
             return
-        # Widget → Bildkoordinaten
-        img_w = self._last_preview.width()
-        img_h = self._last_preview.height()
-        if img_w == 0 or img_h == 0:
-            return
-        # Letterbox-Berechnung (wie in ImageView.paintEvent)
-        w, h = self.view.width(), self.view.height()
-        scale = min(w / img_w, h / img_h)
-        disp_w, disp_h = int(img_w * scale), int(img_h * scale)
-        ox, oy = (w - disp_w) // 2, (h - disp_h) // 2
-        px = int((pos.x() - ox) / scale)
-        py = int((pos.y() - oy) / scale)
-        if not (0 <= px < img_w and 0 <= py < img_h):
-            return
-        px = min(px, img_w - 1)
-        py = min(py, img_h - 1)
-        c = self._last_preview.pixel(px, py)
-        r, g, b = (c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF
+        r, g, b = rgb
         hue = _srgb_hue(r / 255.0, g / 255.0, b / 255.0)
         # Nur in Hue-Tabs
         if self.curves_editor.active_channel in HUE_CHANNELS:

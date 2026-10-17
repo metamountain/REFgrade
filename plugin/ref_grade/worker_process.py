@@ -31,19 +31,27 @@ def ensure(port: int, python: str, core: Path, timeout: float = 30.0) -> str:
     if _health(port):
         return "running"
 
+    if not python:
+        raise RuntimeError("No Python with torch found — run the setup first.")
     tmp = config.temp_dir()
     log_path = tmp / "worker.log"
     log_file = open(log_path, "ab")
-    proc = subprocess.Popen(
-        # -E + clean env: Krita sets PYTHONHOME/PYTHONPATH for its own Python 3.13; inherited,
-        # they make the system Python load Krita's stdlib and die ("bad magic number").
-        [python, "-E", "-m", "worker", "--port", str(port)],
-        cwd=str(core),
-        env=clean_env(),
-        stdout=log_file,
-        stderr=log_file,
-        creationflags=subprocess.CREATE_NO_WINDOW,
-    )
+    try:
+        proc = subprocess.Popen(
+            # -E + clean env: Krita sets PYTHONHOME/PYTHONPATH for its own Python 3.13; inherited,
+            # they make the system Python load Krita's stdlib and die ("bad magic number").
+            [python, "-E", "-m", "worker", "--port", str(port)],
+            cwd=str(core),
+            env=clean_env(),
+            stdout=log_file,
+            stderr=log_file,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+    except OSError as e:
+        # missing python.exe / core folder: callers catch RuntimeError only (an OSError
+        # escaping their Qt slot ends Krita) — debug round 2026-10-17
+        log_file.close()
+        raise RuntimeError(f"Worker konnte nicht starten ({python}, {core}): {e}") from e
 
     deadline = time.time() + timeout
     while time.time() < deadline:

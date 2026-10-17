@@ -51,9 +51,28 @@ echo [refgrade] installing PyQt6, numpy, pillow ...
 if errorlevel 1 goto :err_pip
 
 :have_python
+REM the Krita setup builds the runtime without PyQt6 (Krita brings its own): add it here
+"%PYTHON%" -c "import PyQt6.QtWidgets" >NUL 2>&1
+if not errorlevel 1 goto :start_gui
+echo [refgrade] PyQt6 missing in %PYTHON%
+if not exist "%RUNTIME_DIR%\uv\uv.exe" goto :err_qt
+echo [refgrade] installing PyQt6 ...
+"%RUNTIME_DIR%\uv\uv.exe" pip install --python "%PYTHON%" PyQt6
+if errorlevel 1 goto :err_qt
+:start_gui
 echo [refgrade] starting gui with %PYTHON%
 "%PYTHON%" "%~dp0standalone\gui.py" %*
-exit /b %errorlevel%
+if errorlevel 1 goto :err_gui
+exit /b 0
+
+:err_qt
+echo [refgrade] ERROR: PyQt6 is missing in %PYTHON% and could not be installed.
+echo            Install it with:  "%PYTHON%" -m pip install PyQt6
+goto :fail
+
+:err_gui
+echo [refgrade] the GUI ended with an error (see above).
+goto :fail
 
 :err_uv_dl
 echo [refgrade] ERROR: downloading uv failed.

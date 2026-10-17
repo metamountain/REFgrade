@@ -487,14 +487,18 @@ class WorkerMixin:
             self._saveas_out = None
             return
         clarity_info = result.get("clarity")
+        keep_open = False
         if self._on_ok:
             # clarity_info is an optional trailing argument: only pass it when present,
             # so callbacks that predate Clarity (2-arg) keep working.
             if clarity_info is not None:
-                self._on_ok(raw, self._layer_name(), clarity_info)
+                ret = self._on_ok(raw, self._layer_name(), clarity_info)
             else:
-                self._on_ok(raw, self._layer_name())
-        self.accept()
+                ret = self._on_ok(raw, self._layer_name())
+            # standalone: on_ok returns False = saved to a file, keep grading (Krita: None)
+            keep_open = ret is False
+        if not keep_open:
+            self.accept()
 
 
     def _maybe_schedule_crop(self) -> None:

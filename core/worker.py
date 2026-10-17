@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import sys
 import threading
@@ -381,8 +382,13 @@ class Handler(BaseHTTPRequestHandler):
         from refgrade.scope import vectorscope, rgb_parade
         vs_result = vectorscope(img)
         parade_result = rgb_parade(img)
+        # the same clamped full-resolution window as sess.crop: rect is float, in full-image
+        # coordinates — s.source is the downscaled preview (wrong area / TypeError before)
         x, y, w, h = rect
-        source_crop = s.source[:, y:y+h, x:x+w, :]
+        H, W = s.source_full.shape[1], s.source_full.shape[2]
+        x0, y0 = max(0, math.floor(x)), max(0, math.floor(y))
+        x1, y1 = min(math.ceil(x + w), W), min(math.ceil(y + h), H)
+        source_crop = s.source_full[:, y0:y1, x0:x1, :]
         vs_source = vectorscope(source_crop)
         self._send_json(200, {"image": image_path, "scale": scale,
                               "vectorscope": vs_result, "vectorscope_source": vs_source,
@@ -533,7 +539,7 @@ class Handler(BaseHTTPRequestHandler):
         s = _get_session(sid)
         with _gpu_lock:
             try:
-                path = sess.write_cube(s, refs, method, values, directory, mix)
+                path = sess.write_cube(s, refs, method, values, directory, mix, body.get("name"))
             except KeyError as e:
                 raise _BadRequest(str(e))
             except ValueError as e:

@@ -586,7 +586,7 @@ def _section_grid_key(sec: str, vals: dict, mix: dict, method: str,
     if sec == "reference":
         return ("reference", method, tuple(refs), vals["light_strength"],
                 vals["color_strength"], vals["protect_shadows"],
-                vals["protect_highlights"], lut_size)
+                vals["protect_highlights"], vals.get("protect_midtones", 0.0), lut_size)
     if sec == "lut":
         return ("lut", mix.get("lut", ""), lut_size)
     if sec == "curves":
@@ -651,7 +651,9 @@ def _histogram_l(img: torch.Tensor) -> list[float]:
     lab = rgb_to_lab(img)
     L = (lab[..., 0] / 100.0).clamp(0.0, 1.0)
     L = L.cpu()
-    counts, _ = torch.histogram(L.flatten(), bins=HIST_BINS)
+    # fixed 0..1 axis: without range torch spans min..max of the data, so source and result
+    # were stretched differently and not comparable (debug round 2026-10-17)
+    counts, _ = torch.histogram(L.flatten(), bins=HIST_BINS, range=(0.0, 1.0))
     total = counts.sum().clamp_min(1.0)
     return (counts / total).tolist()
 
@@ -664,7 +666,7 @@ def _histogram_rgb(img: torch.Tensor) -> dict[str, list[float]]:
     l = (0.2126 * r + 0.7152 * g + 0.0722 * b).clamp(0.0, 1.0)
 
     def _hist(t: torch.Tensor) -> list[float]:
-        counts, _ = torch.histogram(t.flatten(), bins=RGB_HIST_BINS)
+        counts, _ = torch.histogram(t.flatten().clamp(0.0, 1.0), bins=RGB_HIST_BINS, range=(0.0, 1.0))
         total = counts.sum().clamp_min(1.0)
         return (counts / total).tolist()
 
@@ -981,13 +983,13 @@ def crop(
         result = reconstruct_apply(result, reconstruct_val)
     clarity_val = vals.get("clarity", 0.0)
     if clarity_val != 0.0:
-        result = clarity_apply(result, clarity_val, full_size)
+        result = clarity_apply(result, clarity_val, full_size, scale=1.0)   # region is 1:1
     texture_val = vals.get("texture", 0.0)
     if texture_val != 0.0:
-        result = texture_apply(result, texture_val, full_size)
+        result = texture_apply(result, texture_val, full_size, scale=1.0)
     dehaze_val = vals.get("dehaze", 0.0)
     if dehaze_val != 0.0:
-        result = dehaze_apply(result, dehaze_val, full_size)
+        result = dehaze_apply(result, dehaze_val, full_size, scale=1.0)
 
     scale = 1.0
     if max(h, w) > max_side:
@@ -1030,8 +1032,10 @@ def write_cube(
     values: dict,
     directory: str,
     mix: dict | None = None,
+    name: str | None = None,
 ) -> Path:
-    """LUT als .cube schreiben.
+    """LUT als .cube schreiben. `name`: Dateiname aus dem Speichern-Dialog (der Nutzer hat ihn
+    gewählt und ggf. das Überschreiben bestätigt); ohne ihn ein neuer Name nach der Vorlage.
 
     Args:
         s: Session.
@@ -1047,6 +1051,9 @@ def write_cube(
     lut = build_lut(s, refs, method, values, mix)
     ref_name = Path(refs[0]).stem
     lut["title"] = f"REF Grade · {ref_name}"
-    path = cube_path(directory, refs[0])
+    if name:
+        path = Path(directory) / (_INVALID_CHARS.sub("_", Path(name).stem) + ".cube")
+    else:
+        path = cube_path(directory, refs[0])
     lut_write_cube(lut, str(path))
     return path

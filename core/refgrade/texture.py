@@ -21,7 +21,8 @@ def _gaussian_kernel(sigma: float, device: torch.device, dtype: torch.dtype) -> 
     return g / g.sum()
 
 
-def apply(img: torch.Tensor, texture: float, full_size: int) -> torch.Tensor:
+def apply(img: torch.Tensor, texture: float, full_size: int,
+          scale: float | None = None) -> torch.Tensor:
     """Apply texture (fine-detail contrast) to an sRGB image.
 
     Args:
@@ -37,7 +38,8 @@ def apply(img: torch.Tensor, texture: float, full_size: int) -> torch.Tensor:
 
     amount = TEXTURE_AMOUNT * texture
     h, w = img.shape[1], img.shape[2]
-    scale = max(h, w) / full_size
+    if scale is None:            # full-resolution crop: 1.0 (see clarity.apply)
+        scale = max(h, w) / full_size
     sigma = TEXTURE_SIGMA_REF * scale
     if sigma < 0.5:
         return img

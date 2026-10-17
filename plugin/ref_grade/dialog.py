@@ -609,7 +609,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         m.addAction("Open file…", self._load_from_file)
         m.addAction("Paste screenshot  (Ctrl+V)", self._load_from_clipboard)
         m.addAction("Folder…", self._load_from_folder)
-        m.execAt(self._btn_load.mapToGlobal(self._btn_load.rect().bottomLeft()))
+        m.exec(self._btn_load.mapToGlobal(self._btn_load.rect().bottomLeft()))
 
     def _load_from_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -773,21 +773,10 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         if img is None or img.isNull():
             self._set_status("Color Replace · kein Bild zum Abtasten")
             return
-        img_w, img_h = img.width(), img.height()
-        if img_w == 0 or img_h == 0:
+        rgb = self._sample_view(pos, img)          # zoom/pan aware (dlg_wb)
+        if rgb is None:
             return
-        w, h = self.view.width(), self.view.height()
-        sc = min(w / img_w, h / img_h)
-        disp_w, disp_h = int(img_w * sc), int(img_h * sc)
-        ox, oy = (w - disp_w) // 2, (h - disp_h) // 2
-        px = int((pos.x() - ox) / sc)
-        py = int((pos.y() - oy) / sc)
-        if not (0 <= px < img_w and 0 <= py < img_h):
-            return
-        px = min(px, img_w - 1)
-        py = min(py, img_h - 1)
-        c = img.pixel(px, py)
-        r, g, b = ((c >> 16) & 0xFF) / 255.0, ((c >> 8) & 0xFF) / 255.0, (c & 0xFF) / 255.0
+        r, g, b = (c / 255.0 for c in rgb)
         self._cr_section.set_pipette_color(self._cr_pick_index, r, g, b, getattr(self, "_cr_pick_which", "src"))
         self._set_status(f"Color Replace · picked ({r:.2f}, {g:.2f}, {b:.2f})")
 

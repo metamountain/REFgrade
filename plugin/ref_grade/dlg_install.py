@@ -359,6 +359,15 @@ class InstallDialog(QDialog):
         else:
             self.reject()
 
+    def reject(self) -> None:
+        """Esc also lands here (not in closeEvent): while installing it only requests the
+        cancel — closing would destroy the running QThread and abort the process (Krita too)."""
+        if getattr(self, "_running", False):
+            self._cancelled_flag = True
+            self.btn_cancel.setEnabled(False)
+            return
+        super().reject()
+
     def closeEvent(self, event) -> None:
         if self._worker is not None and self._worker.isRunning():
             self._cancelled_flag = True
@@ -370,4 +379,7 @@ class InstallDialog(QDialog):
 
 def run_installer(parent=None, **kw) -> bool:
     dlg = InstallDialog(parent, **kw)
-    return dlg.exec() == QDialog.DialogCode.Accepted
+    ok = dlg.exec() == QDialog.DialogCode.Accepted
+    if dlg._worker is not None:
+        dlg._worker.wait()          # never let the QThread die with the dialog while running
+    return ok

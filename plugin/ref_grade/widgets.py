@@ -1172,8 +1172,8 @@ class Histogram(QWidget):
         for ch in ("r", "g", "b"):
             hi = self._clip.get(f"{ch}_hi", 0.0)
             lo = self._clip.get(f"{ch}_lo", 0.0)
-            col = self._CHANNEL_COLORS[ch]
-            col.setAlpha(160)
+            col = QColor(self._CHANNEL_COLORS[ch])   # a copy: setAlpha on the shared colour
+            col.setAlpha(160)                         # made every curve translucent for good
             p.setPen(QPen(col))
             if hi >= self._CLIP_SHOW:
                 txt = f"{ch.upper()} ▲ {hi * 100:.0f} %"
@@ -1748,7 +1748,8 @@ class Vectorscope(QWidget):
         self.data: list[list[float]] = []
         self.data_source: list[list[float]] = []
         self._result: list[list[float]] | None = None
-        self._cloud_cache: tuple[QImage, list[list[float]], int, int] | None = None
+        # source and result cloud per paint: one slot each, else every repaint recomputed both
+        self._cloud_cache: dict[tuple[int, int, int], tuple[QImage, list[list[float]]]] = {}
         _rh = scale.row_h(style.current_s())
         self.setMinimumSize(round(4 * _rh), round(4 * _rh))
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -1874,14 +1875,15 @@ class Vectorscope(QWidget):
         side = int(r.width())
         if side <= 0:
             return
-        if (self._cloud_cache is not None
-                and self._cloud_cache[1] is data
-                and self._cloud_cache[2] == side
-                and self._cloud_cache[3] == alpha_max):
-            img = self._cloud_cache[0]
+        key = (id(data), side, alpha_max)
+        hit = self._cloud_cache.get(key)
+        if hit is not None and hit[1] is data:
+            img = hit[0]
         else:
             img = self._compute_cloud_image(data, side, alpha_max)
-            self._cloud_cache = (img, data, side, alpha_max)
+            if len(self._cloud_cache) >= 4:
+                self._cloud_cache.pop(next(iter(self._cloud_cache)))
+            self._cloud_cache[key] = (img, data)
         # Glow: 1/4 down, smooth up, alpha 0.5, below
         if side > 8:
             small = img.scaled(side // 4, side // 4,
@@ -2099,7 +2101,7 @@ class Parade(QWidget):
             for ch in ("r", "g", "b"):
                 hi = self._clip.get(f"{ch}_hi", 0.0)
                 lo = self._clip.get(f"{ch}_lo", 0.0)
-                col = self._CHANNEL_COLORS[ch]
+                col = QColor(self._CHANNEL_COLORS[ch])   # copy, never the shared colour
                 col.setAlpha(160)
                 p.setPen(QPen(col))
                 if hi >= self._CLIP_SHOW:

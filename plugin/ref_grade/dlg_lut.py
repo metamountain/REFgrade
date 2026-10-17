@@ -55,8 +55,10 @@ class _LutTreePopup(QWidget):
     lut_selected = pyqtSignal(str)
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        # a Popup window: move() takes global coordinates and a click outside closes it. As a
+        # plain child it was placed in dialog coordinates and clipped (debug round 2026-10-17).
+        # No WA_DeleteOnClose: the dialog keeps and reuses this instance.
+        super().__init__(parent, Qt.WindowType.Popup)
         self._model = QStandardItemModel(self)
         self._model.setHorizontalHeaderLabels(["LUT"])
         self._tree = QTreeView(self)
@@ -78,7 +80,7 @@ class _LutTreePopup(QWidget):
 
     def _on_clicked(self, index) -> None:
         data = self._model.data(index, Qt.ItemDataRole.UserRole)
-        if data and data != "__FOLDER__":
+        if data is not None and data != "__FOLDER__":     # "" = "— none —": switch the LUT off
             self.lut_selected.emit(data)
             self.hide()
 
@@ -325,10 +327,12 @@ class LutMixin:
         suffix = f" ({', '.join(n.capitalize() for n in excluded)} not included)" if excluded else ""
         lut_folder = self._settings.value("lut_folder", "") or str(config.LUTS)
         save_dir = str(Path(lut_folder) / "RefGrade")
-        Path(save_dir).mkdir(parents=True, exist_ok=True)
-        path = self._save_lut(save_dir, f"{name}.cube{suffix}")
+        # suffix before .cube; the chosen name goes to the worker (it used to pick its own name
+        # and drop the user's), the folder is only created once a name was chosen (2026-10-17)
+        path = self._save_lut(save_dir, f"{name}{suffix}.cube")
         if path is None:
             return
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._lut_dir_last = str(Path(path).parent)
         vals = self._values()
         for n in ("clarity", "texture", "dehaze", "highlight_reconstruct"):
@@ -339,6 +343,7 @@ class LutMixin:
             "method": self._method(),
             "values": vals,
             "dir": self._lut_dir_last,
+            "name": Path(path).name,
             "mix": self.mode(),
         }
         req_id = self._next_req()

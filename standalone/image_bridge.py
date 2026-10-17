@@ -9,8 +9,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import cv2
 import numpy as np
+
+try:
+    import cv2
+except ImportError:  # the runtime venv has no OpenCV (only this CLI bridge uses it)
+    cv2 = None
+
+
+def _need_cv2() -> None:
+    if cv2 is None:
+        raise RuntimeError("The command line tool needs OpenCV: "
+                           "python -m pip install opencv-python-headless")
 
 if TYPE_CHECKING:  # nur für Type-Hints; PyQt6 wird erst in read_qimage geladen
     from PyQt6.QtGui import QImage
@@ -43,6 +53,7 @@ def read_image(path: str, tmp: Path) -> dict:
     Returns:
         Dict mit raw, width, height, depth, x, y und path.
     """
+    _need_cv2()
     data = np.fromfile(path, np.uint8)
     img = cv2.imdecode(data, cv2.IMREAD_UNCHANGED)
     if img is None:
@@ -119,6 +130,7 @@ def write_image(source: dict, raw_path: Path, out_path: Path) -> None:
     der Tiefe source['depth'] und kodiert mit cv2.imencode (tofile wegen Umlauten).
     .png/.tif/.tiff behalten 16 Bit; .jpg → 8 Bit ohne Alpha.
     """
+    _need_cv2()
     w, h = source["width"], source["height"]
     dtype, _ = _depth_info(source["depth"])
     expected = w * h * 4 * dtype.itemsize
@@ -130,7 +142,7 @@ def write_image(source: dict, raw_path: Path, out_path: Path) -> None:
     ext = Path(out_path).suffix.lower()
     if ext in (".png", ".tif", ".tiff"):
         payload = bgra  # 16 Bit, mit Alpha
-    elif ext == ".jpg":
+    elif ext in (".jpg", ".jpeg"):
         if dtype == np.uint16:
             payload = (bgra.astype(np.uint32) >> 8).astype(np.uint8)[..., :3]
         else:

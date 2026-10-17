@@ -63,6 +63,9 @@ class TestColorReplace(unittest.TestCase):
         """Rot → Blau: rotes Bild wird blau."""
         x = _red_image()
         vals = _defaults()
+        # V=1 images, as if picked: source and target bars at V=1 (defaults 0.5 since 2026-10-17)
+        for _k in [k for k in vals if k.endswith(("_src_bright", "_tgt_bright"))]:
+            vals[_k] = 1.0
         vals["cr_0_src_hue"] = 0.0
         vals["cr_0_src_sat"] = 1.0
         vals["cr_0_tgt_hue"] = 240.0
@@ -104,6 +107,9 @@ class TestColorReplace(unittest.TestCase):
         """Intensity 0.5 → halb gemischt."""
         x = _red_image()
         vals = _defaults()
+        # V=1 images, as if picked: source and target bars at V=1 (defaults 0.5 since 2026-10-17)
+        for _k in [k for k in vals if k.endswith(("_src_bright", "_tgt_bright"))]:
+            vals[_k] = 1.0
         vals["cr_0_src_hue"] = 0.0
         vals["cr_0_src_sat"] = 1.0
         vals["cr_0_tgt_hue"] = 240.0
@@ -129,6 +135,9 @@ class TestColorReplace(unittest.TestCase):
             ]
         ])
         vals = _defaults()
+        # V=1 images, as if picked: source and target bars at V=1 (defaults 0.5 since 2026-10-17)
+        for _k in [k for k in vals if k.endswith(("_src_bright", "_tgt_bright"))]:
+            vals[_k] = 1.0
         # Instanz 0: Rot → Blau
         vals["cr_0_src_hue"] = 0.0
         vals["cr_0_intensity"] = 1.0
@@ -167,15 +176,29 @@ class TestColorReplace(unittest.TestCase):
         y2 = apply(x, vals2)
         torch.testing.assert_close(y2, x)
 
+    def test_bright_ratio_target_over_source(self):
+        """2026-10-17: output V scales with tgt/src; defaults 0.5/0.5 keep V."""
+        x = torch.tensor([[[[0.0, 0.0, 0.6]] * 4] * 4])        # blue, V=0.6
+        vals = _defaults()
+        self.assertEqual((vals["cr_0_src_bright"], vals["cr_0_tgt_bright"]), (0.5, 0.5))
+        vals.update({"cr_0_src_hue": 240.0, "cr_0_src_sat": 1.0, "cr_0_tgt_hue": 0.0,
+                     "cr_0_tgt_sat": 1.0, "cr_0_intensity": 1.0, "cr_0_range": 90.0})
+        y = apply(x, vals)
+        self.assertGreater(y[0, 0, 0, 0].item(), 0.5)           # red, V kept (88 % mix: V 0.1 off the 0.5 gate)
+        vals.update({"cr_0_src_bright": 0.6, "cr_0_tgt_bright": 0.3})
+        y = apply(x, vals)
+        self.assertAlmostEqual(y[0, 0, 0, 0].item(), 0.3, delta=0.01)   # half as bright
+
     def test_src_bright_weak_modulation(self):
         """src_bright modulated nur schwach (0.7..1.0): Midtone voll, Highlight 70%."""
         vals = _defaults()
         vals["cr_0_src_hue"] = 240.0
         vals["cr_0_src_sat"] = 1.0
         vals["cr_0_src_bright"] = 0.5
+        # 2026-10-17: output brightness ∝ tgt/src → tgt 0.5 keeps V (was 1.0 with V × tgt)
         vals["cr_0_tgt_hue"] = 0.0
         vals["cr_0_tgt_sat"] = 1.0
-        vals["cr_0_tgt_bright"] = 1.0
+        vals["cr_0_tgt_bright"] = 0.5
         vals["cr_0_intensity"] = 1.0
         vals["cr_0_range"] = 90.0
         # Midtone-Blau (V=0.5) → bright_mod=1.0 → voll ersetzt (rot mit V=0.5)

@@ -41,10 +41,10 @@ def apply(x: torch.Tensor, values: dict[str, float | torch.Tensor]) -> torch.Ten
             continue
         src_hue = values.get(f"cr_{i}_src_hue", 0.0)
         src_sat = values.get(f"cr_{i}_src_sat", 1.0)
-        src_bright = values.get(f"cr_{i}_src_bright", 1.0)
+        src_bright = values.get(f"cr_{i}_src_bright", 0.5)
         tgt_hue = values.get(f"cr_{i}_tgt_hue", 0.0)
         tgt_sat = values.get(f"cr_{i}_tgt_sat", 1.0)
-        tgt_bright = values.get(f"cr_{i}_tgt_bright", 1.0)
+        tgt_bright = values.get(f"cr_{i}_tgt_bright", 0.5)
         range_deg = values.get(f"cr_{i}_range", 30.0)
         y = _replace_one(y, src_hue, src_sat, src_bright, tgt_hue, tgt_sat, tgt_bright, intensity, range_deg)
     return y
@@ -67,8 +67,10 @@ def _replace_one(
     src_bright: schwach modulierender Helligkeits-Faktor (0.7..1.0) — V nahe src_bright
         → volle Selektion (1.0), V weit entfernt → nur 0.7. Farbe bleibt primär,
         Helligkeit ist nur feine Abstimmung (dunkle + helle Varianten werden getroffen).
-    tgt_bright: skaliert die OUTPUT-Helligkeit der ersetzten Pixel
-        (1.0=normal, <1.0=dunkler, >1.0= heller, geclampt 0..1).
+    tgt_bright: Helligkeit der Zielfarbe. Die OUTPUT-Helligkeit der ersetzten Pixel skaliert mit
+        tgt_bright / src_bright (Quellfarbe → Zielfarbe): gleich = unverändert, Ziel halb so hell
+        = halb so hell (2026-10-17, Standard 0.5/0.5; alte 1.0/1.0 bleiben neutral).
+        Faktor begrenzt auf 0..4, Ergebnis geclampt 0..1.
     """
     h, S, V = _rgb_to_hsv(x)
 
@@ -98,8 +100,10 @@ def _replace_one(
     bright_mod = 0.7 + 0.3 * bright_gate
     mask = mask * sat_guard * bright_mod * src_sat * intensity
 
-    # Ziel-Farbe: tgt_hue/tgt_sat, OUTPUT-Helligkeit = Pixel-V × tgt_bright (geclampt 0..1)
-    V_tgt = (V * tgt_bright).clamp(0.0, 1.0)
+    # Ziel-Farbe: tgt_hue/tgt_sat, OUTPUT-Helligkeit = Pixel-V × tgt_bright / src_bright
+    gain = torch.as_tensor(tgt_bright, dtype=V.dtype, device=V.device) / torch.as_tensor(
+        src_bright, dtype=V.dtype, device=V.device).clamp(min=0.05)
+    V_tgt = (V * gain.clamp(0.0, 4.0)).clamp(0.0, 1.0)
     tgt_rgb = _hsv_to_rgb(
         torch.zeros_like(h) + tgt_hue,
         torch.zeros_like(S) + tgt_sat,

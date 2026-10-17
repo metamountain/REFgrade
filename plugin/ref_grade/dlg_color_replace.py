@@ -254,11 +254,11 @@ class _CRInstance(QWidget):
 
         # ── Row 1: brightness gradient bars under the wheels (half width, one line) ──
         self.src_bright = BrightBar(
-            f"cr_{index}_src_bright", 1.0,
+            f"cr_{index}_src_bright", 0.5,
             tip="Source luminance window (black=shadows, white=highlights)")
         self.tgt_bright = BrightBar(
-            f"cr_{index}_tgt_bright", 1.0,
-            tip="Target brightness offset (black=darker, white=brighter)")
+            f"cr_{index}_tgt_bright", 0.5,
+            tip="Target brightness: left of the source bar = darker, right = brighter")
         grid.addWidget(self.src_bright, 1, 0)
         grid.addWidget(self.tgt_bright, 1, 1)
 
@@ -313,8 +313,8 @@ class _CRInstance(QWidget):
     def _on_reset(self) -> None:
         self.src_wheel.set_point(0.5, 0.0)
         self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
-        self.src_bright.set_value(1.0)
-        self.tgt_bright.set_value(1.0)
+        self.src_bright.set_value(0.5)
+        self.tgt_bright.set_value(0.5)
         self.intensity.set_value(0.5)
         self.range.set_value(30.0)
         self._update_squares()
@@ -323,14 +323,14 @@ class _CRInstance(QWidget):
     def _on_reset_src(self) -> None:
         """Reset only the source wheel: hue, saturation and brightness to defaults."""
         self.src_wheel.set_point(0.5, 0.0)
-        self.src_bright.set_value(1.0)
+        self.src_bright.set_value(0.5)
         self._update_squares()
         self.changed.emit()
 
     def _on_reset_tgt(self) -> None:
         """Reset only the target wheel: hue, saturation and brightness to defaults."""
         self.tgt_wheel.set_point(-0.5 * math.cos(math.radians(60)), -0.5 * math.sin(math.radians(60)))
-        self.tgt_bright.set_value(1.0)
+        self.tgt_bright.set_value(0.5)
         self._update_squares()
         self.changed.emit()
 
@@ -376,8 +376,8 @@ class _CRInstance(QWidget):
         tgt_s = vals.get(f"cr_{i}_tgt_sat", 1.0)
         self._set_wheel_hsv(self.src_wheel, src_h, src_s)
         self._set_wheel_hsv(self.tgt_wheel, tgt_h, tgt_s)
-        self.src_bright.set_value(vals.get(f"cr_{i}_src_bright", 1.0))
-        self.tgt_bright.set_value(vals.get(f"cr_{i}_tgt_bright", 1.0))
+        self.src_bright.set_value(vals.get(f"cr_{i}_src_bright", 0.5))
+        self.tgt_bright.set_value(vals.get(f"cr_{i}_tgt_bright", 0.5))
         self.intensity.set_value(vals.get(f"cr_{i}_intensity", 0.5))
         self.range.set_value(vals.get(f"cr_{i}_range", 30.0))
         self._update_squares()

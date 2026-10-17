@@ -143,7 +143,9 @@ def _rolloff(y: torch.Tensor, r: float | torch.Tensor) -> torch.Tensor:
         Y,
         k + (1.0 - k) * torch.tanh((Y - k) / (1.0 - k).clamp_min(_EPS)),
     )
-    scale = Yn / Y.clamp_min(_EPS)
+    # luma ≤ 0 (contrast > 1 pushes darks below 0) stays as is: Yn/clamp(Y) was −Y/1e-6 →
+    # huge negative scale → dark pixels turned white/colourful (debug round 2026-10-17)
+    scale = torch.where(Y > _EPS, Yn / Y.clamp_min(_EPS), torch.ones_like(Y))
     return y * scale
 
 

@@ -120,7 +120,8 @@ def _guided_filter(guide: torch.Tensor, src: torch.Tensor, radius: int, eps: flo
     return a * guide + b
 
 
-def apply(img: torch.Tensor, dehaze: float, full_size: int) -> torch.Tensor:
+def apply(img: torch.Tensor, dehaze: float, full_size: int,
+          scale: float | None = None) -> torch.Tensor:
     """Apply dehaze (or add haze) to an sRGB image.
 
     Args:
@@ -136,7 +137,8 @@ def apply(img: torch.Tensor, dehaze: float, full_size: int) -> torch.Tensor:
         return img
 
     h, w = img.shape[1], img.shape[2]
-    scale = max(h, w) / full_size
+    if scale is None:            # full-resolution crop: 1.0 (see clarity.apply)
+        scale = max(h, w) / full_size
 
     # Dark channel window (odd, >= 3)
     window = max(3, int(DEHAZE_WINDOW_REF * scale) | 1)  # ensure odd

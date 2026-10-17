@@ -59,8 +59,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.output:
         out_path = Path(args.output)
     else:
-        suffix = src_path.suffix or ".png"
+        # the input's format where we can write it, else .png — .jpeg/.bmp/.webp failed only
+        # after the whole computation (debug round 2026-10-17)
+        suffix = src_path.suffix.lower()
+        if suffix not in (".png", ".jpg", ".jpeg", ".tif", ".tiff"):
+            suffix = ".png"
         out_path = src_path.with_name(f"{src_path.stem}_rg{suffix}")
+    if out_path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".tif", ".tiff"):
+        print(f"error: unsupported output format: {out_path.suffix}", file=sys.stderr)
+        return 1
 
     # Device
     if args.device == "cuda":
@@ -130,7 +137,8 @@ def main(argv: list[str] | None = None) -> int:
                         dtype=np.uint8 if source["depth"] == "U8" else np.uint16)
         raw_out = tmp_path / "result.raw"
         rawio.write_raw(str(raw_out), result, alpha, source["depth"])
-        write_image(source, raw_out, out_path)
+        # --max-side changed the size: write_image checks the raw length against the source
+        write_image({**source, "width": w, "height": h}, raw_out, out_path)
         print(f"saved: {out_path}")
 
         # Export .cube

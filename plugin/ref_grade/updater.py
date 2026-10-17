@@ -66,7 +66,10 @@ def _plugin_install_dir() -> Path:
 
 
 def _download_zip(dest: Path) -> None:
-    urllib.request.urlretrieve(_ZIP_URL, dest)
+    req = urllib.request.Request(_ZIP_URL, headers={"User-Agent": "RefGrade"})
+    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp, open(dest, "wb") as out:
+        while chunk := resp.read(1 << 20):      # urlretrieve had no timeout: a stalled
+            out.write(chunk)                    # download froze Krita for good
 
 
 def _extract_zip(zip_path: Path, dest: Path) -> None:
@@ -77,10 +80,14 @@ def _extract_zip(zip_path: Path, dest: Path) -> None:
             if not info.filename.startswith(prefix):
                 continue
             rel = info.filename[len(prefix):]
+            if "__pycache__" in rel:
+                continue
             if rel.startswith("plugin/ref_grade/"):
                 dst = dest / rel[len("plugin/ref_grade/"):]
-            elif rel.startswith("core/"):
-                dst = dest / rel[len("core/"):]
+            elif rel == "core/worker.py" or rel.startswith("core/refgrade/"):
+                # the bundled core lives in ref_grade/core/ (config._BUNDLED); only what the
+                # worker needs, not core/tests, bench, reports (debug round 2026-10-17)
+                dst = dest / rel
             else:
                 continue
             if info.is_dir():
@@ -104,10 +111,11 @@ def _write_batch(tmp_dir: Path, new_dir: Path, target: Path, krita_exe: str | No
         "    timeout /t 2 /nobreak >NUL",
         "    goto waitloop",
         ")",
-        "echo Killing worker process...",
-        'for /f "tokens=2" %%p in (\'tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2^>NUL^\') do (',
-        '    wmic process where "ProcessId=%%p" get CommandLine /FORMAT:LIST 2^>NUL | find /I "refgrade" >NUL && taskkill /F /PID %%p >NUL 2^>NUL',
-        ")",
+        "echo Stopping the RefGrade worker...",
+        # wmic is gone from Windows 11 24H2+; CIM finds the worker by its command line
+        "powershell -NoProfile -Command \"Get-CimInstance Win32_Process -Filter \\\"Name='python.exe'\\\""
+        " | Where-Object { $_.CommandLine -match ' -m worker' -and $_.CommandLine -match '--port' }"
+        " | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }\"",
         "timeout /t 1 /nobreak >NUL",
         "echo Replacing plugin files...",
         f"rmdir /S /Q \"{target}\"",
@@ -119,7 +127,8 @@ def _write_batch(tmp_dir: Path, new_dir: Path, target: Path, krita_exe: str | No
         "echo Update complete.",
         "timeout /t 3 /nobreak >NUL",
     ]
-    bat.write_text("\n".join(lines), encoding="utf-8")
+    # CRLF: cmd.exe misreads labels/goto in LF batch files (the wait loop never waited)
+    bat.write_bytes(("\r\n".join(lines) + "\r\n").encode("utf-8"))
     return bat
 
 
@@ -145,6 +154,12 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
     def _p(msg: str) -> None:
         if progress_cb:
             progress_cb(msg)
+
+    if not config._BUNDLED or any((d / ".git").exists() for d in config._HERE.parents):
+        # standalone / git checkout: _HERE is the repo's plugin folder — replacing it would
+        # delete local work and leave core/ behind (debug round 2026-10-17)
+        return False, ("Update only for the Krita plugin ZIP install. Here: git pull, or "
+                       "download the new release ZIP from github.com/" + _REPO)
 
     _p("Prüfe GitHub…")
     latest = _fetch_latest()
@@ -176,7 +191,9 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
 
         _p("Entpacke…")
         _extract_zip(zip_path, new_dir)
-        _save_commit(latest_sha)
+        # the batch replaces the whole folder: the version marker must be in the new one
+        (new_dir / "installed_version.json").write_text(
+            json.dumps({"commit": latest_sha, "repo": _REPO}, indent=2), encoding="utf-8")
 
         target = _plugin_install_dir()
         krita_exe = _find_krita()
@@ -192,6 +209,7 @@ def check_and_update(progress_cb=None) -> tuple[bool, str]:
             [str(bat)],
             creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0x00000010),
         )
-        return True, f"Update läuft: {latest_sha[:8]}. Krita schließt sich jetzt."
+        return True, (f"Update {latest_sha[:8]} bereit. Bitte Krita jetzt schließen — "
+                      "die Dateien werden danach ersetzt und Krita neu gestartet.")
     except Exception as e:
         return False, f"Update fehlgeschlagen: {e}"
