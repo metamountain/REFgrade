@@ -1,18 +1,46 @@
-# REFgrade — Colour Grading by Reference (Krita plugin · standalone app)
+# REFgrade — Colour Grading (Krita plugin · standalone app)
 
 > **Hobby project — not bug-free.** Tested only on Windows 11 with Krita 6.0.4 (beta) at
 > 2560×1440. Expect rough edges, crashes, and things that simply don't work yet.
 > If you hit a problem, please file an issue on GitHub — bug reports, crash logs and
 > "this button does nothing" are all equally welcome.
 
-REFgrade transfers the light and colour mood of one or more reference images onto your image and
-lets you fine-tune the result with grading controls. It runs as a **Krita plugin** (the result
-becomes a new layer) and as a **standalone app** without Krita. The grading can also be exported as a
-3D LUT (`.cube`).
+REFgrade is a colour grading tool for photographs and digital paintings. It runs as a
+**Krita plugin** (the result becomes a new layer) and as a **standalone app** without
+Krita, and the whole grading can be exported as a 3D LUT (`.cube`).
 
-<a href="docs/screenshot.jpg"><img src="docs/screenshot.jpg" width="100%" alt="REFgrade dialog: grading controls, colour wheels and scopes beside the graded image"></a>
+<a href="docs/screenshot.jpg"><img src="docs/screenshot.jpg" width="100%" alt="REFgrade dialog: grading sections, colour wheels and scopes beside the graded image"></a>
 
 Current version: see `plugin/ref_grade/version.py`.
+
+## Features
+
+- **Reference transfer:** load up to four reference images and transfer their light and
+  colour mood — **Reinhard** (robust default), **MKL** (stronger), **Zonal** (shadows,
+  midtones and highlights matched separately), or **PAIR** (learns a LUT from a
+  before/after pair). **FIT** auto-sets the sliders to the reference.
+- **TONE:** Exposure, Contrast, Highlights, Shadows, Whites, Blacks, Clarity, Texture and
+  Dehaze — plus **Recover** (soft highlight rolloff) and **Reconstruct** (partially
+  rebuilds clipped channels) for blown highlights. **POP** applies a preset recipe.
+- **WB · COLOR:** Temperature, Tint, Saturation, Vibrance, with **AUTO WB** and
+  **PICK WB** (pick a point that should be neutral).
+- **RGB:** Gamma / Offset / Gain for Master, Red, Green and Blue, with zone control
+  (shadows / midtones / highlights).
+- **CURVES:** the RGB curve plus five hue curves (HvH, HvS, HvL, LvS, SvS).
+- **WHEELS:** Lift / Gamma / Gain wheels with Balance, Blending and Intensity.
+- **HSL:** six colour bands × Hue / Sat / Light, Lightroom-style.
+- **COLOR REPLACE:** pick a colour with the pipette and replace it — up to eight
+  instances at once, each with its own HSL-distance mask (Range), Intensity and source /
+  target pipettes.
+- **LUT:** load `.cube` files from any folder; export the current grading as `.cube`
+  (Clarity, Texture, Dehaze and Reconstruct are not part of a LUT).
+- **Chapters:** every section is a chapter — switch it on/off, weight it (Amount),
+  **SOLO** it, reset it, and reorder the chain by drag & drop.
+- **Scopes:** Histogram, Parade, Waveform, Vectorscope.
+- **A "?" help button at every slider.**
+- **Colour schemes:** Black, Dark Grey, Light Grey, White.
+
+Exported `.cube` files go to the folder you choose in the file dialog.
 
 ## Installation — standalone
 
@@ -67,19 +95,9 @@ Folder**, usually `%APPDATA%\krita`). To free the disk space, delete the runtime
 - **CANCEL** closes the image. `Esc` does not close it.
 
 In Krita: load references into the slots, choose a method (Reinhard / MKL / Zonal / Pair), press
-**FIT** to auto-match (not for Pair, which learns the LUT from a before/after pair), adjust, and press
-**OK** to apply as a new layer. **SOLO** isolates a section; **CANCEL** closes without applying.
-
-## Features
-
-- **Sections:** REFERENCE, WB · COLOR, TONE (including **Recover** and **Reconstruct** for blown
-  highlights), RGB, CURVES, WHEELS (Lift / Gamma / Gain), HSL, LUT (load `.cube` files, export the
-  grading as `.cube`), COLOR REPLACE (several instances, HSL-distance mask).
-- A **"?"** help button at every slider.
-- **Colour schemes:** Black, Dark Grey, Light Grey, White.
-- **Scopes:** Histogram, Parade, Waveform, Vectorscope.
-
-Exported `.cube` files go to the folder you choose in the file dialog.
+**FIT** to auto-match (not for Pair, which learns the LUT from a before/after pair), adjust, and
+press **SAVE** to apply the grading as a new layer above the active one. **SOLO** (in a section
+header) isolates that section; **CANCEL** closes without applying.
 
 ## System requirements
 
