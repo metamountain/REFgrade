@@ -1,10 +1,16 @@
-"""Colours, font and stylesheet of the REF Grade window — the only place they are defined."""
+"""Colours, font and stylesheet of the REFgrade window — the only place they are defined.
+
+Chrome colours (background, surface, text, accent, dim) come from the active colour
+scheme (``schemes``). Functional / data-visualisation colours (slider tracks, curve
+channel colours, scopes, colour-replace swatches, overlay states) are fixed and live
+in the ``# functional colours`` section below — the single place they are defined.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtGui import QColor, QFont, QFontDatabase
 from PyQt6.QtWidgets import QWidget
 
 from . import scale, schemes
@@ -22,8 +28,13 @@ def __getattr__(name):  # noqa: N807 - module-level live chrome colours
         return schemes.role_color(name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-# Functional (non-scheme) colours: fixed regardless of the active scheme.
-MARK_ERROR = "#B4B4B4"   # status-strip error mark (K27e: grey, not red)
+
+# ── functional colours ─────────────────────────────────────────────────────────
+# Fixed regardless of the active scheme: data-visualisation and functional colours.
+# This is the single place they are defined (spec K41a §2: "nicht verstreut").
+
+# Status-strip error mark (K27e: grey, not red).
+MARK_ERROR = "#B4B4B4"
 
 # Superslim colour tracks (user 2026-10-07: "Farbanzeige superslim"): the 2 px slider groove
 # is a gradient that shows where the slider pushes. Stops are 0..1 over the slider range.
@@ -34,6 +45,135 @@ TRACKS = {
     "saturation": ((0.0, "#5A5A5A"), (1 / 3, "#6E655C"), (1.0, "#FF6A00")),
     "vibrance": ((0.0, "#5A5A5A"), (0.5, "#6E655C"), (1.0, "#FF6A00")),
 }
+
+# Overlay states (K27f): (alpha, hex_color) for idle / hover / busy / done / error.
+OVERLAY = {
+    "idle": (60, "#5A5A5A"),
+    "hover": (140, "#5A5A5A"),
+    "busy": (200, "#8A8A8A"),
+    "done": (200, "#B4B4B4"),
+    "error": (200, "#A04040"),
+}
+
+
+def overlay_style(state: str) -> tuple[int, str]:
+    """Return (alpha, hex_color) for the given overlay state (idle, hover, busy, done, error)."""
+    return OVERLAY.get(state, OVERLAY["idle"])
+
+
+# ── Reference tiles (RefSlots) ─────────────────────────────────────────────────
+TILE_SCRIM = QColor(0, 0, 0, 170)          # label background strip
+TILE_PAIR_LABEL = QColor(255, 255, 255, 160)  # pair label text
+TILE_DIM = QColor(0, 0, 0, 120)            # dimmed tile overlay
+
+# ── ColorWheel ─────────────────────────────────────────────────────────────────
+WHEEL_FADE_CENTER = QColor(20, 20, 20, 255)  # dark centre (muted, black-first look)
+WHEEL_FADE_EDGE = QColor(0, 0, 0, 90)
+WHEEL_DISABLED = QColor(0, 0, 0, 204)        # section off: 80 % black over the disk
+
+# ── Histogram ──────────────────────────────────────────────────────────────────
+HIST_BG = QColor(20, 20, 20)
+HIST_GRID = QColor(40, 40, 40)
+HIST_SOURCE = QColor(160, 160, 160)          # source grey outline
+HIST_CLIP = QColor(200, 200, 200)            # clipping triangles
+HIST_GHOST = QColor(255, 255, 255)           # luminance ghost / haze
+HIST_CHANNEL_COLORS = {
+    "r": QColor(220, 40, 40),
+    "g": QColor(40, 200, 40),
+    "b": QColor(40, 80, 220),
+    "l": QColor(180, 180, 180),
+}
+
+# ── Scope channel buttons ──────────────────────────────────────────────────────
+SCOPE_CH_COLORS = {
+    "r": QColor(0xFF, 0x3B, 0x3B),
+    "g": QColor(0x3B, 0xFF, 0x6A),
+    "b": QColor(0x3B, 0x8B, 0xFF),
+    "l": QColor(0xED, 0xED, 0xED),
+}
+SCOPE_L_OFF = QColor(0x5A, 0x5A, 0x5A)       # L off: dark grey, on: white (user 2026-10-11)
+SCOPE_ACTIVE_TEXT = QColor(0, 0, 0)          # text on an active (filled) scope button
+
+# ── Image view overlays ────────────────────────────────────────────────────────
+SPLIT_LINE_SHADOW = QColor(0, 0, 0)          # 1 px black shadow behind the split line
+SPLIT_LINE = QColor(255, 255, 255)           # the split line itself
+LOAD_BAR_BG = QColor(0, 0, 0, 90)            # loading-bar background
+LOAD_TEXT_SHADOW = QColor(0, 0, 0)           # loading-% text shadow
+STATUS_STRIP_BG = QColor(16, 16, 16)         # status strip at the bottom of the image
+TOGGLE_OFF_BG = QColor(0, 0, 0, 160)         # S / C toggle, off state
+
+# ── Vectorscope ────────────────────────────────────────────────────────────────
+VS_BG = QColor(0, 0, 0)
+VS_CROSSHAIR = QColor(40, 40, 40)
+VS_SKIN_LINE = QColor(100, 100, 100)
+# Rec.709 Cb/Cr für reine Primärfarbton bei 75 % Sättigung.
+VS_MARKS = (
+    ("R", 0.5 - 0.1144, 0.5 + 0.5, QColor(220, 40, 40)),
+    ("Y", 0.5 - 0.5, 0.5 + 0.0458, QColor(220, 220, 40)),
+    ("G", 0.5 - 0.3853, 0.5 - 0.4538, QColor(40, 200, 40)),
+    ("C", 0.5 + 0.1144, 0.5 - 0.5, QColor(40, 200, 220)),
+    ("B", 0.5 + 0.5, 0.5 - 0.0458, QColor(40, 80, 220)),
+    ("M", 0.5 + 0.3853, 0.5 + 0.4538, QColor(220, 40, 220)),
+)
+
+# ── Waveform (luma) ────────────────────────────────────────────────────────────
+WAVE_BG = QColor(0, 0, 0)
+WAVE_GRID = QColor(38, 38, 38)
+
+# ── RGB Parade ─────────────────────────────────────────────────────────────────
+PARADE_BG = QColor(0, 0, 0)
+PARADE_CHANNEL_COLORS = {
+    "r": QColor(0xFF, 0x30, 0x30),
+    "g": QColor(0x30, 0xFF, 0x60),
+    "b": QColor(0x40, 0x60, 0xFF),
+}
+
+# ── Curves editor ──────────────────────────────────────────────────────────────
+# Channel colours (the "rgb" entry is the scheme text colour, resolved live).
+CURVE_CHANNEL_COLORS = {
+    "r": "#B43C3C",
+    "g": "#3CB43C",
+    "b": "#3C3CB4",
+    "hue_hue": "#CC8833",
+    "hue_sat": "#CC3388",
+    "hue_lum": "#3388CC",
+    "lum_sat": "#33CC88",
+    "sat_sat": "#8833CC",
+}
+CURVE_LUM_SAT = (QColor(0, 0, 0), QColor(255, 255, 255))   # lum_sat background gradient
+CURVE_SAT_SAT = (QColor(128, 128, 128), QColor(255, 0, 0))  # sat_sat background gradient
+CURVE_HISTOGRAM = QColor(255, 255, 255, 26)                 # histogram bars behind the curve
+
+# ── Color Replace ──────────────────────────────────────────────────────────────
+CR_BAR_BLACK = QColor(0, 0, 0)            # BrightBar gradient, black end
+CR_BAR_WHITE = QColor(255, 255, 255)      # BrightBar gradient, white end
+CR_HANDLE_EDGE = QColor(0, 0, 0)          # BrightBar handle edge
+CR_SQUARE_DEFAULT = "#808080"             # default src/tgt swatch colour
+CR_SQUARE_BORDER = "#2A2A2A"              # swatch border
+CR_RESET_BG = QColor(0, 0, 0, 150)        # wheel reset button background
+CR_RESET_HOVER = QColor(255, 255, 255)    # reset glyph, hover
+CR_RESET_IDLE = QColor(0xA0, 0xA0, 0xA0)  # reset glyph, idle
+# Curve-editor channel colours (the "rgb" master curve uses the scheme text colour instead).
+CHANNEL_COLORS = {
+    "r": "#B43C3C",
+    "g": "#3CB43C",
+    "b": "#3C3CB4",
+    "hue_hue": "#CC8833",
+    "hue_sat": "#CC3388",
+    "hue_lum": "#3388CC",
+    "lum_sat": "#33CC88",
+    "sat_sat": "#8833CC",
+}
+
+# Neutral ramps / swatch constants for gradients and colour-replace swatches.
+RAMP_BLACK = "#000000"
+RAMP_WHITE = "#FFFFFF"
+RAMP_GREY = "#808080"
+RAMP_RED = "#FF0000"
+TRACK_NEUTRAL = "#5A5A5A"      # middle stop of the desaturated slider tracks
+SWATCH_EDGE = "#2A2A2A"
+
+# ── end functional colours ─────────────────────────────────────────────────────
 
 
 def track_sheet(stops) -> str:
@@ -129,6 +269,9 @@ QLabel[muted="true"] {{ color: {MUTED}; }}
 QLabel[section="true"] {{ color: {MUTED}; letter-spacing: 2px; }}
 QLabel[section="true"][state="on"] {{ color: {TEXT}; }}
 QLabel[section="true"][state="off"] {{ color: {DIM}; }}
+QLabel[wordmark="ref"] {{ color: {ACCENT}; }}
+QLabel[wordmark="grade"] {{ color: {TEXT}; }}
+QLabel[wordmark="ver"] {{ color: {DIM}; }}
 QPushButton {{ background: {BLACK}; color: {TEXT}; border: 1px solid {LINE_STRONG};
               padding: 6px 12px; }}
 QPushButton:hover {{ border-color: {MUTED}; }}
@@ -146,7 +289,7 @@ QPushButton[main="reset"] {{ background: {BLACK}; color: {MUTED}; border: 1px so
 QPushButton[main="reset"]:hover {{ border-color: {TEXT}; }}
 QPushButton[main="cancel"] {{ background: {BLACK}; color: {TEXT}; border: 1px solid {LINE_STRONG}; }}
 QPushButton[main="cancel"]:hover {{ border-color: {TEXT}; }}
-QPushButton[main="ok"] {{ background: {ACCENT}; color: #FFFFFF; border: 1px solid {ACCENT}; font-weight: bold; }}
+QPushButton[main="ok"] {{ background: {ACCENT}; color: {TEXT}; border: 1px solid {ACCENT}; font-weight: bold; }}
 QPushButton[main="ok"]:hover {{ background: {ACCENT_HOVER}; border-color: {ACCENT_HOVER}; }}
 QLabel:disabled {{ color: {DIM}; }}
 QLabel[dim="true"] {{ color: {DIM}; }}
@@ -178,20 +321,3 @@ QToolTip {{ background: {BLACK}; color: {TEXT}; border: 1px solid {MUTED};
 
 # Backward-compatible module-level constant (uses default scale).
 STYLESHEET: str = stylesheet()
-
-
-# ── Overlay states (K27f) ─────────────────────────────────────────────────────
-
-def overlay_style(state: str) -> tuple[int, str]:
-    """Return (alpha, hex_color) for the given overlay state.
-
-    States: idle, hover, busy, done, error.
-    """
-    table = {
-        "idle": (60, "#5A5A5A"),
-        "hover": (140, "#5A5A5A"),
-        "busy": (200, "#8A8A8A"),
-        "done": (200, "#B4B4B4"),
-        "error": (200, "#A04040"),
-    }
-    return table.get(state, table["idle"])

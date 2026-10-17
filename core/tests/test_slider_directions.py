@@ -913,7 +913,7 @@ class TestVisibleCount(unittest.TestCase):
     """Sicherstellen, dass alle 64 sichtbaren Regler in VISIBLE sind."""
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 129, f"VISIBLE hat {len(VISIBLE)} statt 129 Regler")
+        self.assertEqual(len(VISIBLE), 131, f"VISIBLE hat {len(VISIBLE)} statt 131 Regler")
 
 
 if __name__ == "__main__":

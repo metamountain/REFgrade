@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from pathlib import Path
@@ -36,14 +37,42 @@ PORT: int = 47123
 _SKIP_PATTERNS = ("windowsapps", "pythonmanager")
 
 
+def settings_path() -> Path:
+    """Einstellungsdatei; REFGRADE_CONFIG überschreibt den Pfad (Tests)."""
+    env = os.environ.get("REFGRADE_CONFIG")
+    if env:
+        return Path(env)
+    return Path(os.environ.get("APPDATA", "")) / "RefGrade" / "config.json"
+
+
+def read_settings() -> dict:
+    """config.json lesen; fehlt/ungültig → leeres dict."""
+    try:
+        data = json.loads(settings_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_settings(data: dict) -> None:
+    """config.json schreiben; Ordner wird angelegt."""
+    p = settings_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
 def python_exe() -> str | None:
     """Interpreter-Programm für den Worker; None wenn nicht gefunden."""
+    from . import runtime
+    # K38c: gespeichertes python_exe zuerst, wenn es den Check besteht.
+    stored = read_settings().get("python_exe")
+    if stored and runtime.python_ok(stored):
+        return stored
+    if runtime.is_installed():
+        return str(runtime.venv_python())
     env = os.environ.get("REFGRADE_PYTHON")
     if env:
         return env
-    from . import runtime
-    if runtime.is_installed():
-        return str(runtime.venv_python())
     for name in ("python", "python3"):
         p = shutil.which(name)
         if p and not any(pat in p.lower() for pat in _SKIP_PATTERNS):

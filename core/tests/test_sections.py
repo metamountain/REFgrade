@@ -126,12 +126,12 @@ class TestSectionsTable(unittest.TestCase):
                          f"nur dialog+neu={expected - set(VISIBLE)}")
 
     def test_visible_count(self):
-        """VISIBLE hat genau 129 Einträge."""
-        self.assertEqual(len(VISIBLE), 129)
+        """VISIBLE hat genau 131 Einträge."""
+        self.assertEqual(len(VISIBLE), 131)
 
     def test_fittable_count(self):
-        """FITTABLE hat genau 22 Einträge (tone + color + wheels, ohne clarity)."""
-        self.assertEqual(len(FITTABLE), 22)
+        """FITTABLE hat genau 23 Einträge (tone + color + wheels, ohne clarity)."""
+        self.assertEqual(len(FITTABLE), 23)
 
     def test_fittable_excludes_reference(self):
         """Kein reference-Regler in FITTABLE."""

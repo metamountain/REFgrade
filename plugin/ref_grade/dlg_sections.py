@@ -171,7 +171,7 @@ def _curves_section(sliders: list) -> tuple[QWidget, SectionHeader, CurvesEditor
     reset_btn.setProperty("font_role", "small")
     reset_btn.setFixedHeight(scale.row_h(style.current_s()))
     reset_btn.setProperty("small", True)
-    reset_btn.setToolTip("Reset active channel")
+    reset_btn.setToolTip("Reset all curves (every channel back to identity)")
     btn_row.addWidget(reset_btn)
     cbox.addLayout(btn_row)
     # Editor
@@ -195,7 +195,7 @@ def _hsl_track(band: str, mode: str) -> tuple:
     if mode == "hue":
         return ((0.0, hx(c - 30)), (0.5, hx(c)), (1.0, hx(c + 30)))
     if mode == "sat":
-        return ((0.0, "#5A5A5A"), (0.5, hx(c, 120, 180)), (1.0, hx(c)))
+        return ((0.0, style.TRACK_NEUTRAL), (0.5, hx(c, 120, 180)), (1.0, hx(c)))
     return ((0.0, hx(c, 200, 50)), (0.5, hx(c, 230, 160)), (1.0, hx(c, 90, 255)))
 
 
@@ -478,8 +478,8 @@ class SectionsMixin:
 
 
     def _curves_channel_reset(self) -> None:
-        """Reset only the active curves channel to identity."""
-        self.curves_editor.reset_channel()
+        """↺ in the curves button row: reset every curve channel to identity."""
+        self.curves_editor.reset_all()
         if self._client is not None:
             self._schedule_preview()
 
@@ -591,7 +591,7 @@ class SectionsMixin:
         layout.insertWidget(2, self._pop_btn)
 
 
-    _NO_LUT_SLIDERS = ("clarity", "texture", "dehaze")
+    _NO_LUT_SLIDERS = ("clarity", "texture", "dehaze", "highlight_reconstruct")
 
     def _add_not_in_lut_label(self, sections: dict) -> None:
         """'(no LUT!)' in the clarity/texture/dehaze rows, right after the name."""

@@ -504,7 +504,7 @@ class DummyModeTest(unittest.TestCase):
 
     def test_dummy_offscreen(self):
         dlg = RefGradeDialog()
-        self.assertEqual(dlg.windowTitle(), "RefGrade")
+        self.assertTrue(dlg.windowTitle().startswith("REFgrade"))
         # K25i: status strip shows short text; full text is the tooltip
         self.assertEqual(dlg.view.mark, "LAYOUT DUMMY")
         dlg.close()

@@ -7,17 +7,19 @@ images and emit signals.
 from __future__ import annotations
 
 import ctypes
+import html as _html
 import math
 import time
 from pathlib import Path
 
 from PyQt6.QtCore import QElapsedTimer, QEvent, QPointF, QPoint, QRectF, QSize, QSizeF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import (QBrush, QColor, QConicalGradient, QFont, QFontMetrics, QImage, QPainter,
-                         QLinearGradient, QPainterPath, QPen, QPixmap, QRadialGradient)
+                          QLinearGradient, QPainterPath, QPen, QPixmap, QRadialGradient)
 from PyQt6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QSizePolicy,
-                             QSlider, QStyle, QStyleOptionSlider, QToolTip, QVBoxLayout, QWidget)
+                              QSlider, QStyle, QStyleOptionSlider, QToolTip, QVBoxLayout, QWidget)
 
 from . import scale, style, wheels
+from .dlg_common import load_help
 
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff")
 
@@ -91,13 +93,13 @@ class RefTile(QWidget):
             s = min(src.width(), src.height())   # centre crop to a square
             crop = QRectF((src.width() - s) / 2, (src.height() - s) / 2, s, s)
             p.drawPixmap(r, self._pix, crop)
-            p.fillRect(QRectF(0, side - 18, side, 18), QColor(0, 0, 0, 170))
+            p.fillRect(QRectF(0, side - 18, side, 18), style.TILE_SCRIM)
             p.setPen(QColor(style.TEXT))
             p.setFont(style.font("base"))
             p.drawText(r.adjusted(6, 0, -6, -3), Qt.AlignmentFlag.AlignBottom |
                        Qt.AlignmentFlag.AlignLeft, self.label)
             if self.pair_label:
-                p.setPen(QColor(255, 255, 255, 160))
+                p.setPen(style.TILE_PAIR_LABEL)
                 p.setFont(style.font("small"))
                 p.drawText(r.adjusted(6, 0, -6, -20), Qt.AlignmentFlag.AlignBottom |
                            Qt.AlignmentFlag.AlignLeft, self.pair_label)
@@ -115,7 +117,7 @@ class RefTile(QWidget):
             p.setFont(style.font("base"))
             p.drawText(r, Qt.AlignmentFlag.AlignCenter, self._drag_hint)
         if self.dimmed:
-            p.fillRect(r, QColor(0, 0, 0, 120))
+            p.fillRect(r, style.TILE_DIM)
 
     def mousePressEvent(self, e) -> None:  # noqa: N802
         if e.button() == Qt.MouseButton.LeftButton:
@@ -375,7 +377,11 @@ class _RelativeSlider(QSlider):
 
 
 class SliderRow(QWidget):
-    """Name, slider, value; double-click on the value resets to the default."""
+    """Name, slider, value; double-click on the value resets to the default.
+
+    K40a: a small "?" button sits directly left of the value label (only when the slider
+    name has a HELP entry); clicking it opens a popup with short (bold), what, tip (italic).
+    """
 
     changed = pyqtSignal(str, float)
 
@@ -412,9 +418,42 @@ class SliderRow(QWidget):
             lbl.setFixedWidth(label_width)
             row.addWidget(lbl)
         row.addWidget(self.slider, 1)
+        # K40a: "?" button directly left of the value label (the reset double-click spot)
+        self.help_btn: QPushButton | None = None
+        self.help_popup: QLabel | None = None
+        entry = load_help().get(self.name)
+        if entry:
+            self.help_btn = small_button("?", tip=entry.get("short", ""))
+            self.help_btn.setObjectName(f"help_{self.name}")
+            _hs = scale.row_h(style.current_s())
+            self.help_btn.setFixedSize(_hs, _hs)   # square, like the wheel ↺ and general "?" buttons
+            self.help_btn.clicked.connect(self._show_help_popup)
+            row.addWidget(self.help_btn)
         row.addWidget(self.value_label)
         self.slider.valueChanged.connect(self._on_change)
         self.set_value(default)
+
+    def _show_help_popup(self, *_args) -> None:
+        """K40a: popup at the "?" button: short (bold), what, tip (italic); closes on click away."""
+        entry = load_help().get(self.name)
+        if not entry or self.help_btn is None:
+            return
+        if self.help_popup is None:
+            self.help_popup = QLabel(self)
+            self.help_popup.setWindowFlags(Qt.WindowType.Popup)
+            self.help_popup.setTextFormat(Qt.TextFormat.RichText)
+            self.help_popup.setWordWrap(True)
+            self.help_popup.setFont(style.font("small"))
+            self.help_popup.setStyleSheet(
+                f"background: {style.BLACK}; color: {style.TEXT}; border: 1px solid {style.LINE};")
+        rich = (f"<b>{_html.escape(entry.get('short', ''))}</b><br>"
+                f"{_html.escape(entry.get('what', ''))}<br>"
+                f"<i>{_html.escape(entry.get('tip', ''))}</i>")
+        self.help_popup.setText(rich)
+        self.help_popup.setFixedWidth(round(2.2 * style.current_s()))
+        self.help_popup.adjustSize()
+        self.help_popup.move(self.help_btn.mapToGlobal(self.help_btn.rect().bottomLeft()))
+        self.help_popup.show()
 
     def label_text(self) -> str:
         """The label text shown to the left of the slider."""
@@ -436,6 +475,9 @@ class SliderRow(QWidget):
         """Update the value label's fixed width (call when the scale changes)."""
         if w > 0:
             self.value_label.setFixedWidth(w)
+            if self.help_btn is not None:      # K40a: keep the "?" button square at row height
+                _hs = scale.row_h(style.current_s())
+                self.help_btn.setFixedSize(_hs, _hs)
 
     def value(self) -> float:
         return self.lo + self.slider.value() * self.step
@@ -536,6 +578,10 @@ class SectionHeader(QWidget):
     collapsed_changed = pyqtSignal(str, bool)  # key, collapsed
     help_requested = pyqtSignal(str)           # key
     auto_requested = pyqtSignal(str)           # key
+    drag_started = pyqtSignal(str)             # key
+    drag_moved = pyqtSignal(str, object)       # key, QPoint (global)
+    drag_ended = pyqtSignal(str, bool)         # key, was_drag
+    reset_order_requested = pyqtSignal()
 
     def __init__(self, key: str, title: str, on: bool = True, parent: QWidget | None = None,
                  auto: bool = False):
@@ -551,11 +597,19 @@ class SectionHeader(QWidget):
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(4)
+        self._drag_start_pos = None
+        self._is_dragging = False
         self.triangle = CollapseTriangle()
         self.triangle.clicked.connect(self._title_click)
         self._title = group_title(title)
         self._title.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._title.mousePressEvent = self._title_click
+        self._title.installEventFilter(self)
+        self._title.setToolTip(
+            "Drag to change the processing order. Sections are applied top to bottom, "
+            "each one works on the result of the one above.")
+        # K25i: the title keeps its natural width (minimum = sizeHint) so it is never
+        # truncated at small resolutions; the header buttons absorb the deficit instead.
+        self._title.setMinimumWidth(self._title.sizeHint().width())
         row.addWidget(self.triangle)
         row.addWidget(self._title)
         self._collapsed_label = QLabel("")
@@ -564,11 +618,16 @@ class SectionHeader(QWidget):
         self._collapsed_label.setProperty("muted", True)
         row.addWidget(self._collapsed_label)
         row.addStretch(1)
+        # K25i: header buttons are compressible (max = natural width, min = rh-1) so that in a
+        # narrow chapter (e.g. WHEELS in the wheel strip) they absorb the deficit instead of
+        # the title, which keeps its minimum width. The minimum stays at rh-1 (test k25i).
+        _bmin = max(1, _rh - 1)
         # AUTO always exists so the columns line up; sections without AUTO keep its space empty
         self.auto_btn = small_button("AUTO", "auto")
         self.auto_btn.setObjectName(f"auto_{key}")
         self.auto_btn.setFixedHeight(_rh)
-        self.auto_btn.setFixedWidth(self._auto_w())
+        self.auto_btn.setMinimumWidth(_bmin)
+        self.auto_btn.setMaximumWidth(self._auto_w())
         self.auto_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.auto_btn.clicked.connect(lambda: self.auto_requested.emit(self.key))
         keep = self.auto_btn.sizePolicy()
@@ -582,16 +641,21 @@ class SectionHeader(QWidget):
         self.help_btn.setProperty("help", True)
         self.help_btn.setFont(style.font("small"))
         self.help_btn.setProperty("font_role", "small")
-        self.help_btn.setFixedSize(_rh, _rh)
+        self.help_btn.setFixedHeight(_rh)
+        self.help_btn.setMinimumWidth(_bmin)
+        self.help_btn.setMaximumWidth(_rh)
         self.help_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.help_btn.clicked.connect(lambda: self.help_requested.emit(self.key))
         self.help_btn.setToolTip(f"Show help for the {title} section")
         self.on = small_button("ON" if on else "OFF", "on", True)
         self.on.setChecked(on)
         self._show_on(on)
-        self.on.setFixedWidth(scale.value_w(style.current_s()))
+        self.on.setMinimumWidth(_bmin)
+        self.on.setMaximumWidth(scale.value_w(style.current_s()))
         self.on.setToolTip(f"Turn {title} ON or OFF")
         self.undo = small_button("↺")
+        self.undo.setMinimumWidth(_bmin)
+        self.undo.setMaximumWidth(_rh)
         self.undo.setToolTip(f"Reset all {title} settings to defaults")
         # order, most prominent on the right (user 2026-10-11): AUTO · ↺ · ON · ?
         for b in (self.auto_btn, self.undo, self.on, self.help_btn):
@@ -619,14 +683,21 @@ class SectionHeader(QWidget):
     def update_scale(self) -> None:
         """K25i: update button sizes for the current scale."""
         _rh = scale.row_h(style.current_s())
+        _bmin = max(1, _rh - 1)
+        self._title.setMinimumWidth(self._title.sizeHint().width())
         self.triangle.setFixedSize(_rh, _rh)
         self.auto_btn.setFixedHeight(_rh)
-        self.auto_btn.setFixedWidth(self._auto_w())
-        self.help_btn.setFixedSize(_rh, _rh)
+        self.auto_btn.setMinimumWidth(_bmin)
+        self.auto_btn.setMaximumWidth(self._auto_w())
+        self.help_btn.setFixedHeight(_rh)
+        self.help_btn.setMinimumWidth(_bmin)
+        self.help_btn.setMaximumWidth(_rh)
         self.on.setFixedHeight(_rh)
-        self.on.setFixedWidth(scale.value_w(style.current_s()))
+        self.on.setMinimumWidth(_bmin)
+        self.on.setMaximumWidth(scale.value_w(style.current_s()))
         self.undo.setFixedHeight(_rh)
-        self.undo.setFixedWidth(_rh)
+        self.undo.setMinimumWidth(_bmin)
+        self.undo.setMaximumWidth(_rh)
 
     def set_collapsed(self, collapsed: bool, emit: bool = True) -> None:
         if self._collapsed == collapsed:
@@ -644,6 +715,47 @@ class SectionHeader(QWidget):
     def _title_click(self, _e=None) -> None:
         """Title/triangle click: only collapse/expand, do not change the ON state."""
         self.set_collapsed(not self._collapsed)
+
+    def eventFilter(self, obj, event):
+        """Drag & drop on the title; right-click context menu."""
+        if obj is self._title:
+            et = event.type()
+            if et == QEvent.Type.MouseButtonPress:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._drag_start_pos = event.globalPosition().toPoint()
+                    self._is_dragging = False
+                    return True
+                elif event.button() == Qt.MouseButton.RightButton:
+                    self._show_context_menu(event.globalPosition().toPoint())
+                    return True
+            elif et == QEvent.Type.MouseMove:
+                if self._drag_start_pos is not None:
+                    pos = event.globalPosition().toPoint()
+                    if not self._is_dragging:
+                        if (pos - self._drag_start_pos).manhattanLength() >= 6:
+                            self._is_dragging = True
+                            self.drag_started.emit(self.key)
+                    if self._is_dragging:
+                        self.drag_moved.emit(self.key, pos)
+                    return True
+            elif et == QEvent.Type.MouseButtonRelease:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    if self._is_dragging:
+                        self.drag_ended.emit(self.key, True)
+                    else:
+                        self._title_click()
+                    self._drag_start_pos = None
+                    self._is_dragging = False
+                    return True
+        return super().eventFilter(obj, event)
+
+    def _show_context_menu(self, pos) -> None:
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        reset_action = menu.addAction("Reset chain order")
+        action = menu.exec(pos)
+        if action == reset_action:
+            self.reset_order_requested.emit()
 
     def set_amount_slider(self, slider: SliderRow) -> None:
         """Link the Amount SliderRow; its `changed` signal drives `weighted`."""
@@ -747,15 +859,15 @@ class ColorWheel(QWidget):
         p.setBrush(hue)
         p.drawEllipse(c, r, r)
         fade = QRadialGradient(c, r)                 # dark centre: muted, black-first look
-        fade.setColorAt(0.0, QColor(20, 20, 20, 255))
-        fade.setColorAt(1.0, QColor(0, 0, 0, 90))
+        fade.setColorAt(0.0, style.WHEEL_FADE_CENTER)
+        fade.setColorAt(1.0, style.WHEEL_FADE_EDGE)
         p.setBrush(fade)
         p.drawEllipse(c, r, r)
         p.setPen(QPen(QColor(style.LINE_STRONG), 1))
         p.drawLine(QPointF(c.x() - r, c.y()), QPointF(c.x() + r, c.y()))
         p.drawLine(QPointF(c.x(), c.y() - r), QPointF(c.x(), c.y() + r))
         if not self.isEnabled():                     # section off: 80 % black over the disk
-            p.setBrush(QColor(0, 0, 0, 204))
+            p.setBrush(style.WHEEL_DISABLED)
             p.drawEllipse(c, r + 1, r + 1)
         dot = QPointF(c.x() + self.u * r, c.y() - self.v * r)
         strength = math.hypot(self.u, self.v)
@@ -826,12 +938,7 @@ class Histogram(QWidget):
     """RGB histogram: additive R/G/B composition, single channel, clipping, grid."""
 
     CHANNELS = ("r", "g", "b", "l")
-    _CHANNEL_COLORS = {
-        "r": QColor(220, 40, 40),
-        "g": QColor(40, 200, 40),
-        "b": QColor(40, 80, 220),
-        "l": QColor(180, 180, 180),
-    }
+    _CHANNEL_COLORS = style.HIST_CHANNEL_COLORS
     _CLIP_THRESHOLD = 0.001  # 0.1 % of total
     _CLIP_SHOW = 0.005  # 0.5 % – minimum to display text
 
@@ -920,7 +1027,7 @@ class Histogram(QWidget):
             gpath = self._curve(ghost_vals, x0, y0, w, h, peak)
             p.setCompositionMode(plus)
             for width, alpha in self._GHOST_STROKES:
-                c = QColor(255, 255, 255)
+                c = QColor(style.HIST_GHOST)
                 c.setAlphaF(min(1.0, alpha * self.GHOST))
                 p.setPen(QPen(c, width, *round_pen))
                 p.drawPath(gpath)
@@ -930,7 +1037,7 @@ class Histogram(QWidget):
             haze.lineTo(QPointF(x0, y0 + h))
             haze.closeSubpath()
             grad = QLinearGradient(0, y0, 0, y0 + h)
-            top, bottom = QColor(255, 255, 255), QColor(255, 255, 255)
+            top, bottom = QColor(style.HIST_GHOST), QColor(style.HIST_GHOST)
             top.setAlphaF(min(1.0, 0.10 * self.GHOST))
             bottom.setAlphaF(0.0)
             grad.setColorAt(0.0, top)
@@ -964,7 +1071,7 @@ class Histogram(QWidget):
                 if not vals or len(vals) < 2:
                     continue
                 n = len(vals)
-                p.setPen(QPen(QColor(160, 160, 160), 1, Qt.PenStyle.DashLine))
+                p.setPen(QPen(style.HIST_SOURCE, 1, Qt.PenStyle.DashLine))
                 line_path = QPainterPath()
                 for i, v in enumerate(vals):
                     px = x0 + i * w / (n - 1)
@@ -990,21 +1097,21 @@ class Histogram(QWidget):
                 tri.lineTo(QPointF(x0, y0 + 10))
                 tri.lineTo(QPointF(x0 + 10, y0))
                 tri.closeSubpath()
-                p.fillPath(tri, QColor(200, 200, 200))
+                p.fillPath(tri, style.HIST_CLIP)
             if vals[-1] > self._CLIP_THRESHOLD:
                 tri = QPainterPath()
                 tri.moveTo(QPointF(x0 + w, y0))
                 tri.lineTo(QPointF(x0 + w, y0 + 10))
                 tri.lineTo(QPointF(x0 + w - 10, y0))
                 tri.closeSubpath()
-                p.fillPath(tri, QColor(200, 200, 200))
+                p.fillPath(tri, style.HIST_CLIP)
 
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         # Background
-        p.fillRect(self.rect(), QColor(20, 20, 20))
+        p.fillRect(self.rect(), style.HIST_BG)
         if self.show_luma and self._wave_img is not None and self.WAVE_OPACITY > 0:
             p.save()
             p.setOpacity(self.WAVE_OPACITY)
@@ -1012,7 +1119,7 @@ class Histogram(QWidget):
             p.drawImage(QRectF(0, 0, w, h), self._wave_img)
             p.restore()
         # Grid lines at 25/50/75%
-        p.setPen(QPen(QColor(40, 40, 40), 1))
+        p.setPen(QPen(style.HIST_GRID, 1))
         for frac in (0.25, 0.5, 0.75):
             x = int(w * frac)
             p.drawLine(x, 0, x, h)
@@ -1052,12 +1159,7 @@ class ScopeButton(QWidget):
 
     clicked = pyqtSignal(str)
 
-    CH_COLORS = {
-        "r": QColor(0xFF, 0x3B, 0x3B),
-        "g": QColor(0x3B, 0xFF, 0x6A),
-        "b": QColor(0x3B, 0x8B, 0xFF),
-        "l": QColor(0xED, 0xED, 0xED),
-    }
+    CH_COLORS = style.SCOPE_CH_COLORS
 
     def __init__(self, channel: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -1099,10 +1201,10 @@ class ScopeButton(QWidget):
     def _paint_channel(self, p: QPainter, w: int, h: int, ch: str) -> None:
         color = self.CH_COLORS[ch]
         if ch == "l" and not self._active:
-            color = QColor(0x5A, 0x5A, 0x5A)    # L off: dark grey, on: white (user 2026-10-11)
+            color = style.SCOPE_L_OFF    # L off: dark grey, on: white (user 2026-10-11)
         if self._active:
             p.fillRect(self.rect(), color)
-            p.setPen(QColor(0, 0, 0))
+            p.setPen(style.SCOPE_ACTIVE_TEXT)
         else:
             p.setPen(QPen(color, 1))
             p.setBrush(Qt.BrushStyle.NoBrush)
@@ -1134,7 +1236,7 @@ class ScopeButton(QWidget):
         x = (w - fm.horizontalAdvance("RGB")) / 2
         y = (h + fm.ascent() - fm.descent()) / 2
         for letter, color in zip("RGB", colors):
-            p.setPen(QColor(0, 0, 0) if self._active else color)
+            p.setPen(style.SCOPE_ACTIVE_TEXT if self._active else color)
             p.drawText(QPointF(x, y), letter)
             x += fm.horizontalAdvance(letter)
 
@@ -1142,7 +1244,7 @@ class ScopeButton(QWidget):
         accent = QColor(style.ACCENT)
         if self._active:
             p.fillRect(self.rect(), accent)
-            pen_col = QColor(0, 0, 0)
+            pen_col = style.SCOPE_ACTIVE_TEXT
         else:
             p.setPen(QPen(accent, 1))
             p.setBrush(Qt.BrushStyle.NoBrush)
@@ -1161,7 +1263,7 @@ class ScopeButton(QWidget):
         accent = QColor(style.ACCENT)
         if self._active:
             p.fillRect(self.rect(), accent)
-            p.setPen(QColor(0, 0, 0))
+            p.setPen(style.SCOPE_ACTIVE_TEXT)
         else:
             p.setPen(QPen(accent, 1))
             p.setBrush(Qt.BrushStyle.NoBrush)
@@ -1503,9 +1605,9 @@ class ImageView(QWidget):
             p.setClipping(False)
             p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
             lx = math.floor(sx) + 0.5
-            p.setPen(QPen(QColor(0, 0, 0), 1))
+            p.setPen(QPen(style.SPLIT_LINE_SHADOW, 1))
             p.drawLine(QPointF(lx + 1, 0), QPointF(lx + 1, img_h))
-            p.setPen(QPen(QColor("#FFFFFF"), 1))
+            p.setPen(QPen(style.SPLIT_LINE, 1))
             p.drawLine(QPointF(lx, 0), QPointF(lx, img_h))
         elif not self.image.isNull() and not self.logical.isEmpty():
             kx = self.image.width() / self.logical.width()
@@ -1540,7 +1642,7 @@ class ImageView(QWidget):
             # Pulsing: ±15 % brightness, 1 s period
             pulse = 1.0 + 0.15 * math.sin(2.0 * math.pi * time.time())
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(0, 0, 0, 90))
+            p.setBrush(style.LOAD_BAR_BG)
             p.drawRect(QRectF(bx, by, bar_w, bar_h))
             fill_w = bar_w * self._loading_progress
             if fill_w > 0:
@@ -1551,7 +1653,7 @@ class ImageView(QWidget):
             txt = f"{self._loading_progress * 100:.0f}%"
             tx = bx + bar_w - p.fontMetrics().horizontalAdvance(txt) - 4
             ty = by + bar_h + p.fontMetrics().ascent() + 2
-            p.setPen(QColor(0, 0, 0))
+            p.setPen(style.LOAD_TEXT_SHADOW)
             p.drawText(tx + 1, ty + 1, txt)
             p.setPen(QColor(r, g, b))
             p.drawText(tx, ty, txt)
@@ -1565,7 +1667,7 @@ class ImageView(QWidget):
             QTimer.singleShot(0, self._emit_status)
         if self._status_h > 0:
             strip = QRectF(0, img_h, self.width(), self._status_h)
-            p.fillRect(strip, QColor(16, 16, 16))
+            p.fillRect(strip, style.STATUS_STRIP_BG)
             p.setPen(QPen(QColor(style.LINE), 1))
             p.drawLine(0, img_h, self.width(), img_h)
             p.setFont(style.font("small"))
@@ -1579,7 +1681,7 @@ class ImageView(QWidget):
         self._split_btn_rect = QRectF(self.width() - bs - margin, img_h - bs - margin, bs, bs)
         on = self.split_mode
         p.setPen(QPen(QColor(style.ACCENT_HI if on else style.LINE_STRONG), 1))
-        p.setBrush(QColor(style.ACCENT) if on else QColor(0, 0, 0, 160))
+        p.setBrush(QColor(style.ACCENT) if on else style.TOGGLE_OFF_BG)
         p.drawRoundedRect(self._split_btn_rect, 3, 3)
         p.setFont(style.font("small"))
         p.setPen(QColor(style.TEXT if on else style.MUTED))
@@ -1588,7 +1690,7 @@ class ImageView(QWidget):
         self._clip_btn_rect = QRectF(self._split_btn_rect.x() - bs - margin, img_h - bs - margin, bs, bs)
         con = self._clip_view
         p.setPen(QPen(QColor(style.ACCENT_HI if con else style.LINE_STRONG), 1))
-        p.setBrush(QColor(style.ACCENT) if con else QColor(0, 0, 0, 160))
+        p.setBrush(QColor(style.ACCENT) if con else style.TOGGLE_OFF_BG)
         p.drawRoundedRect(self._clip_btn_rect, 3, 3)
         p.setPen(QColor(style.TEXT if con else style.MUTED))
         p.drawText(self._clip_btn_rect, Qt.AlignmentFlag.AlignCenter, "C")
@@ -1604,15 +1706,8 @@ class ImageView(QWidget):
 class Vectorscope(QWidget):
     """Vectorscope: Cb/Cr-Punktwolke in echten Pixel-Farben, Hue-Ring, Zielmarken."""
 
-    # Rec.709 Cb/Cr für reine Primärfarbton bei 75 % Sättigung
-    _MARKS = (
-        ("R", 0.5 - 0.1144, 0.5 + 0.5, QColor(220, 40, 40)),
-        ("Y", 0.5 - 0.5, 0.5 + 0.0458, QColor(220, 220, 40)),
-        ("G", 0.5 - 0.3853, 0.5 - 0.4538, QColor(40, 200, 40)),
-        ("C", 0.5 + 0.1144, 0.5 - 0.5, QColor(40, 200, 220)),
-        ("B", 0.5 + 0.5, 0.5 - 0.0458, QColor(40, 80, 220)),
-        ("M", 0.5 + 0.3853, 0.5 + 0.4538, QColor(220, 40, 220)),
-    )
+    # Rec.709 Cb/Cr für reine Primärfarbton bei 75 % Sättigung.
+    _MARKS = style.VS_MARKS
     _SKIN_ANGLE_DEG = 123.0
 
     def __init__(self, parent: QWidget | None = None):
@@ -1781,7 +1876,7 @@ class Vectorscope(QWidget):
         radius = r.width() / 2
 
         # Background: black like the wheels beside it (user 2026-10-11)
-        p.fillRect(self.rect(), QColor(0, 0, 0))
+        p.fillRect(self.rect(), style.VS_BG)
 
         self._draw_scope_circle(p, r, self.data, alpha_max=255,
                                 source_data=self.data_source)
@@ -1795,11 +1890,11 @@ class Vectorscope(QWidget):
 
         # Background: black inside circle
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(0, 0, 0))
+        p.setBrush(style.VS_BG)
         p.drawEllipse(QPointF(cx, cy), radius, radius)
 
         # Very weak crosshair
-        p.setPen(QPen(QColor(40, 40, 40), 1))
+        p.setPen(QPen(style.VS_CROSSHAIR, 1))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawLine(QPointF(r.x(), cy), QPointF(r.x() + r.width(), cy))
         p.drawLine(QPointF(cx, r.y()), QPointF(cx, r.y() + r.height()))
@@ -1808,7 +1903,7 @@ class Vectorscope(QWidget):
         angle = math.radians(self._SKIN_ANGLE_DEG)
         dx = math.cos(angle) * radius
         dy = math.sin(angle) * radius
-        p.setPen(QPen(QColor(100, 100, 100), 1, Qt.PenStyle.DashLine))
+        p.setPen(QPen(style.VS_SKIN_LINE, 1, Qt.PenStyle.DashLine))
         p.drawLine(QPointF(cx, cy), QPointF(cx + dx, cy - dy))
 
         # Rainbow contour: QConicalGradient matching _cbcr_to_rgb hue mapping
@@ -1849,11 +1944,11 @@ class Waveform(QWidget):
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
         w, h = self.width(), self.height()
-        p.fillRect(self.rect(), QColor(0, 0, 0))
+        p.fillRect(self.rect(), style.WAVE_BG)
         if self._image is not None and w > 1 and h > 1:
             p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
             p.drawImage(QRectF(0, 0, w, h), self._image)
-        p.setPen(QPen(QColor(38, 38, 38), 1))
+        p.setPen(QPen(style.WAVE_GRID, 1))
         for frac in (0.25, 0.5, 0.75):
             y = int(h * (1.0 - frac))
             p.drawLine(0, y, w, y)
@@ -1866,11 +1961,7 @@ class Parade(QWidget):
     row 0 top = value 1.
     """
 
-    _CHANNEL_COLORS = {
-        "r": QColor(0xFF, 0x30, 0x30),
-        "g": QColor(0x30, 0xFF, 0x60),
-        "b": QColor(0x40, 0x60, 0xFF),
-    }
+    _CHANNEL_COLORS = style.PARADE_CHANNEL_COLORS
     _CLIP_SHOW = 0.005
 
     def __init__(self, parent: QWidget | None = None):
@@ -1935,7 +2026,7 @@ class Parade(QWidget):
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
         w, h = self.width(), self.height()
-        p.fillRect(self.rect(), QColor(0, 0, 0))
+        p.fillRect(self.rect(), style.PARADE_BG)
         if w < 2 or h < 2:
             return
 

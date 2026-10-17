@@ -243,8 +243,8 @@ class TestSections(unittest.TestCase):
         self.assertNotIn("wheel_balance", FITTABLE)
 
     def test_visible_count(self):
-        # 62 (vor K28d) + 2 (texture, dehaze) = 64
-        self.assertEqual(len(VISIBLE), 129)
+        # 62 (vor K28d) + 2 (texture, dehaze) + 1 (highlight_rolloff, K39a) + 1 (highlight_reconstruct, K39b)
+        self.assertEqual(len(VISIBLE), 131)
         self.assertIn("wheel_blending", VISIBLE)
         self.assertIn("wheel_balance", VISIBLE)
 

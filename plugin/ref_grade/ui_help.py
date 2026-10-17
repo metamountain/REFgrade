@@ -15,8 +15,8 @@ from pathlib import Path
 # ── Section → slider mapping (mirrors core/refgrade/sections.py SECTIONS) ────
 _SECTIONS: dict[str, tuple[str, ...]] = {
     "reference": ("light_strength", "color_strength", "protect_shadows", "protect_highlights"),
-    "tone": ("exposure", "contrast", "highlights", "shadows", "whites", "blacks",
-             "clarity", "texture", "dehaze"),
+    "tone": ("exposure", "contrast", "highlights", "highlight_rolloff", "highlight_reconstruct",
+             "shadows", "whites", "blacks", "clarity", "texture", "dehaze"),
     "color": ("temperature", "tint", "saturation", "vibrance"),
     "wheels": tuple(f"{k}_{c}" for k in ("lift", "gamma", "gain") for c in ("m", "r", "g", "b"))
              + ("wheel_blending", "wheel_balance", "wheel_intensity"),
@@ -35,7 +35,9 @@ _LABELS: dict[str, str] = {
     "light_strength": "Light", "color_strength": "Color",
     "protect_shadows": "Protect shadows", "protect_highlights": "Protect highlights",
     "exposure": "Exposure", "contrast": "Contrast",
-    "highlights": "Highlights", "shadows": "Shadows",
+    "highlights": "Highlights", "highlight_rolloff": "Recover",
+    "highlight_reconstruct": "Reconstruct",
+    "shadows": "Shadows",
     "whites": "Whites", "blacks": "Blacks",
     "clarity": "Clarity", "texture": "Texture", "dehaze": "Dehaze",
     "temperature": "Temperature", "tint": "Tint",
@@ -263,8 +265,10 @@ SECTION_HELP: dict[str, str] = {
         "**Technical**\n"
         "Exposure: `x_lin = x_lin * 2^exposure` in linear RGB (sRGB decoded, multiplied, "
         "re-encoded). # grade.py:_exposure\n"
-        "Contrast: `y = (x - pivot) * contrast + pivot`, with smooth rolloff above luma 0.7: "
-        "`y *= 1 - rolloff * 0.5 * smoothstep(0.7, 1.0, Y)`. # grade.py:_contrast\n"
+        "Contrast: `y = (x - pivot) * contrast + pivot`, then highlight rolloff: knee "
+        "`k = 1 - 0.6*r`, luma `Y <= k` untouched, above `k` scaled by `Yn/Y` with "
+        "`Yn = k + (1-k)*tanh((Y-k)/(1-k))` (hue preserved). r = 0 leaves the image bit-identical. "
+        "# grade.py:_contrast\n"
         "Zones: `L' = L + 0.25 * (sh * bump(0.25) + hi * bump(0.75) + bl * (1-L)^3 + wh * L^3)`, "
         "enforced monotone via cumulative max on 1024 points. # grade.py:_tone_zones\n"
         "Clarity: Gaussian unsharp (sigma scaled to image size) on L* only, masked to "

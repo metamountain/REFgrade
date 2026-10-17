@@ -16,8 +16,8 @@ from .sliders import SLIDERS
 # lut: keine Regler; Pfad in mix["lut"]
 SECTIONS: dict[str, tuple[str, ...]] = {
     "reference": ("light_strength", "color_strength", "protect_shadows", "protect_highlights"),
-    "tone": ("exposure", "contrast", "highlights", "shadows", "whites", "blacks",
-             "clarity", "texture", "dehaze"),
+    "tone": ("exposure", "contrast", "highlights", "highlight_rolloff", "highlight_reconstruct",
+             "shadows", "whites", "blacks", "clarity", "texture", "dehaze"),
     "color": ("temperature", "tint", "saturation", "vibrance"),
     "wheels": tuple(f"{k}_{c}" for k in ("lift", "gamma", "gain") for c in ("m", "r", "g", "b"))
              + ("wheel_blending", "wheel_balance", "wheel_intensity"),
@@ -39,7 +39,7 @@ FITTABLE: tuple[str, ...] = tuple(
     n for key, names in SECTIONS.items()
     if key in ("tone", "color", "wheels") for n in names
     if n not in ("wheel_blending", "wheel_balance", "wheel_intensity", "clarity", "texture",
-                 "dehaze")
+                  "dehaze", "highlight_reconstruct")
 )
 
 

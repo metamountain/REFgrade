@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QCom
                              QMenu, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
 from . import config, cursors, scale, schemes, style
+from .version import __version__
+from . import win_chrome
 from . import wheels
 from .curves_ui import CurvesEditor, CHANNELS, HUE_CHANNELS, ALL_CHANNELS
 from .widgets import (IMAGE_SUFFIXES, ColorWheel, Histogram, ImageView, RefSlots, ScopeButton,
@@ -34,6 +36,7 @@ from .dlg_chain import ChainOrderPopup
 from .dlg_help_popup import HelpPopup, _help_html  # noqa: F401  (Tests importieren HelpPopup aus dialog)
 from .dlg_layout import LayoutMixin
 from .dlg_lut import LutMixin
+from .dlg_panel_order import PanelOrderMixin
 from .dlg_color_replace import ColorReplaceSection
 from .dlg_reference import ReferenceMixin
 from .dlg_worker import WorkerMixin, _ResultSignal, _WorkerTask, _histogram_of
@@ -50,7 +53,7 @@ def _fmt_num(v: float) -> str:
 
 
 class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
-                     WorkerMixin, WhiteBalanceMixin, QDialog):
+                     WorkerMixin, WhiteBalanceMixin, PanelOrderMixin, QDialog):
     """Maximised black window; layout per KONZEPT.md §3 (user sketch, second version)."""
 
     def __init__(self, image: QImage | None = None, parent: QWidget | None = None,
@@ -60,7 +63,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
                  on_update: Callable | None = None,
                  choose_folder: Callable[[str], str | None] | None = None):
         super().__init__(parent)
-        self.setWindowTitle("RefGrade")
+        self.setWindowTitle(f"REFgrade {__version__}")
         self.setStyleSheet(style.STYLESHEET)
         self.setFont(style.font("base"))
         self.open_image = open_image or self._ask_image
@@ -74,16 +77,31 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         else:
             _app = "RefGrade"
         self._settings = QSettings("RefGrade", _app)
-        self._scheme_name = self._settings.value("scheme", schemes.DEFAULT, type=str)
-        self._scheme_name = self._scheme_name if self._scheme_name in schemes.SCHEMES else schemes.DEFAULT
+        self._scheme_name = schemes.resolve_name(
+            self._settings.value("scheme", schemes.DEFAULT, type=str))
+        # Panel order (= chain order): load from QSettings; validate
+        _default_panel = list(CHAIN_ORDER) + ["color_replace"]
+        _co = self._settings.value("chain_order", None, type=list)
+        if _co is not None and set(_co) == set(_default_panel) and len(_co) == len(_default_panel):
+            self._panel_order = list(_co)
+        elif _co is not None and set(_co) == set(CHAIN_ORDER) and len(_co) == len(CHAIN_ORDER):
+            # Old 8-item format: insert color_replace at end
+            self._panel_order = list(_co) + ["color_replace"]
+        else:
+            self._panel_order = list(_default_panel)
+        self._chain_order = [k for k in self._panel_order if k in CHAIN_ORDER]
         self._building = True
         try:
             self._build()
         finally:
             self._building = False
         schemes.apply_scheme(self, schemes.SCHEMES[self._scheme_name])
-        # K22: color is most recently touched so _enforce_no_scroll won't collapse it first
-        self._touch_order = [k for k in self._scroll_keys if k != "color"] + ["color"]
+        # K22: color is most recently touched so _enforce_no_scroll won't collapse it first.
+        # K35a: the collapse *priority* is the pre-K35a scroll order, fixed and independent of
+        # the new panel (chain) order — otherwise the reopen pass (latest-collapsed first) would
+        # try color_replace before lut and leave lut collapsed when it still fits (test_plugin_k25c).
+        self._touch_order = ["tone", "rgb", "hsl", "color_replace", "curves", "lut",
+                             "reference", "color"]
 
         # ── wiring state ──────────────────────────────────────────────────────
         self._client = client
@@ -120,13 +138,6 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._lut_dir_last: str | None = None
         self._busy = False
         self._preview_dirty = False
-
-        # Chain order: load from QSettings; validate (same set as CHAIN_ORDER, no duplicates)
-        _co = self._settings.value("chain_order", None, type=list)
-        if _co is not None and set(_co) == set(CHAIN_ORDER) and len(_co) == len(CHAIN_ORDER):
-            self._chain_order = list(_co)
-        else:
-            self._chain_order = list(CHAIN_ORDER)
 
         # Debounce timer for preview
         self._debounce_timer = QTimer(self)
@@ -246,6 +257,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         master_row_lay = QHBoxLayout(self._master_row)
         master_row_lay.setContentsMargins(0, 0, 0, 0)
         master_row_lay.setSpacing(4)
+        master_row_lay.addWidget(self._build_wordmark())
         master_row_lay.addWidget(self.master, 1)
         master_row_lay.addWidget(self._chain_order_btn)
         master_row_lay.addWidget(self._general_help_btn)
@@ -429,8 +441,16 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             "wheels": self._wheel_content,
             "lut": self._lut_content, "reference": ref_content,
         }
-        # Sections in the scrolling list
-        self._scroll_keys = ("color", "tone", "rgb", "hsl", "color_replace", "curves", "wheels", "lut", "reference")
+        # Sections in the scrolling list (wheels is in the wheel strip, not the scroll)
+        self._scroll_keys = tuple(k for k in self._panel_order if k != "wheels")
+        self._scroll_widgets = {
+            "color": color_w, "tone": tone_w, "rgb": self._rgb_h,
+            "hsl": hsl_w, "color_replace": self._cr_section, "curves": curves_w,
+            "lut": lut_w, "reference": ref_w,
+        }
+        self._drag_key: str | None = None
+        self._drag_indicator: QWidget | None = None
+        self._apply_panel_order()
 
         self.curves_editor.changed.connect(self._curves_changed)
         # Wire all section signals
@@ -443,6 +463,10 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             header.collapsed_changed.connect(self._section_collapsed_changed)
             header.help_requested.connect(self._on_help_requested)
             header.auto_requested.connect(self._on_auto_requested)
+            header.drag_started.connect(self._on_section_drag_started)
+            header.drag_moved.connect(self._on_section_drag_moved)
+            header.drag_ended.connect(self._on_section_drag_ended)
+            header.reset_order_requested.connect(self._on_reset_chain_order)
             for r in rows:
                 r.changed.connect(lambda *_a, k=header.key: self._mark_changed(k))
                 r.changed.connect(self._mode_changed)
@@ -526,14 +550,6 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             if w is not None:
                 w.setToolTip(text)
 
-
-    def set_chain_order(self, order: list[str]) -> None:
-        """Set the chain order (permutation of CHAIN_ORDER); persist to QSettings and preview."""
-        if set(order) != set(CHAIN_ORDER) or len(order) != len(CHAIN_ORDER):
-            raise ValueError(f"chain order must be a permutation of {CHAIN_ORDER}, got {order!r}")
-        self._chain_order = list(order)
-        self._settings.setValue("chain_order", list(order))
-        self._schedule_preview()
 
     def mode(self) -> dict:
         """Sections ON are applied one after another in the chain order; Amount blends each step in."""
@@ -639,18 +655,6 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._source["path"] = str(path.resolve())
         self._on_update()
 
-    def _do_saveas(self) -> None:
-        last = self._settings.value("saveas_folder", str(config.ROOT))
-        d = QFileDialog.getExistingDirectory(self, "Zielordner wählen", last)
-        if not d:
-            return
-        self._settings.setValue("saveas_folder", d)
-        src_path = self._source.get("path") if self._source else None
-        stem = Path(src_path).stem if src_path else "result"
-        target = Path(d) / f"{stem}_grad.png"
-        self._saveas_out = str(target)
-        self._do_ok()
-
     def _set_status(self, text: str) -> None:
         """K25i: status in the bottom strip; full text as tooltip."""
         self.view.set_status(text, text)
@@ -695,21 +699,6 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._help_popup = None
 
 
-    def _on_chain_order_clicked(self) -> None:
-        """Toggle the chain-order popup next to the ⇅ button."""
-        if self._chain_order_popup is not None and self._chain_order_popup.isVisible():
-            self._chain_order_popup.close()
-            self._chain_order_popup = None
-            return
-        popup = ChainOrderPopup(list(self._chain_order), self)
-        popup.order_changed.connect(self.set_chain_order)
-        pos = self._chain_order_btn.mapToGlobal(self._chain_order_btn.rect().bottomLeft())
-        popup.move(pos.x(), pos.y())
-        popup.show()
-        popup.raise_()
-        self._chain_order_popup = popup
-
-
     def _set_scheme(self, name: str) -> None:
         """Switch the UI colour scheme, persist it, and re-apply palette + stylesheet."""
         if name not in schemes.SCHEMES:
@@ -718,6 +707,8 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._settings.setValue("scheme", name)
         schemes.apply_scheme(self, schemes.SCHEMES[name])
         self._restyle_chrome()
+        self._restyle_wordmark()
+        win_chrome.apply(self, schemes.SCHEMES[name])
 
 
     def _set_help_open(self, key: str, open: bool) -> None:

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import math
 import time
+from pathlib import Path
 
 from PyQt6.QtCore import (QEvent, QObject, QRectF, QRunnable, QThreadPool,
                           QTimer, Qt, pyqtSignal)
 from PyQt6.QtGui import QColor, QImage
+from PyQt6.QtWidgets import QFileDialog
 
 from . import config, scale, style, wheels
 from .widgets import Parade, Vectorscope
@@ -143,7 +145,9 @@ class WorkerMixin:
         if getattr(self, "vectorscope", None) is not None and self.vectorscope.isVisible():
             scopes.append("vectorscope")
         parade = getattr(self, "_parade", None)
-        if parade is not None and parade.isVisible():
+        wave = getattr(self, "_wave", None)       # the worker computes wave together with parade
+        if ((parade is not None and parade.isVisible())
+                or (wave is not None and wave.isVisible())):
             scopes.append("parade")
         return scopes
 
@@ -173,7 +177,8 @@ class WorkerMixin:
         self._run_task("/preview", payload, req_id)
         self._crop_timer.stop()
         # Schedule full stage if any spatial effect is active and not dragging
-        spatial_active = any(vals.get(n, 0.0) != 0.0 for n in ("clarity", "texture", "dehaze"))
+        spatial_active = any(vals.get(n, 0.0) != 0.0
+                             for n in ("clarity", "texture", "dehaze", "highlight_reconstruct"))
         self._full_pending = spatial_active and not self._dragging
 
     def _send_full_preview(self) -> None:
@@ -433,16 +438,41 @@ class WorkerMixin:
         self._update_mark()
 
 
+    _SAVEAS_FILTERS = {"PNG (*.png)": ".png", "JPEG (*.jpg *.jpeg)": ".jpg",
+                       "TIFF (*.tif *.tiff)": ".tif"}
+
+    def _do_saveas(self) -> None:
+        """One file dialog (user 2026-10-16: the extra folder step was annoying); the
+        folder is remembered, the name defaults to <source>_grad.png."""
+        last = self._settings.value("saveas_folder", str(config.ROOT))
+        src_path = self._source.get("path") if self._source else None
+        stem = Path(src_path).stem if src_path else "result"
+        out, flt = QFileDialog.getSaveFileName(
+            self, "Save graded image", str(Path(last) / f"{stem}_grad.png"),
+            ";;".join(self._SAVEAS_FILTERS))
+        if not out:
+            return
+        target = Path(out)
+        if target.suffix.lower() not in (".png", ".jpg", ".jpeg", ".tif", ".tiff"):
+            target = target.with_suffix(self._SAVEAS_FILTERS.get(flt, ".png"))
+        self._settings.setValue("saveas_folder", str(target.parent))
+        self._saveas_out = str(target)
+        self._do_ok()
+
     def _apply_apply(self, result: dict) -> None:
         """Handle /apply response: call on_ok and close."""
         raw = result["raw"]
         if getattr(self, "_saveas_out", None):
-            import numpy as np
-            from PIL import Image
-            arr = np.fromfile(raw, dtype=np.uint8).reshape(self._orig_h, self._orig_w, 4)
-            rgb = np.ascontiguousarray(arr[..., [2, 1, 0]])
-            Image.fromarray(rgb, mode="RGB").save(self._saveas_out, quality=95)
-            self._set_status(f"Gespeichert: {self._saveas_out}")
+            # Qt only: this runs inside Krita's Python, which has neither numpy nor PIL.
+            depth = (self._source or {}).get("depth", "U8")
+            data = Path(raw).read_bytes()
+            w, h = self._orig_w, self._orig_h
+            if depth == "U16":   # BGRA 16-bit LE → RGBA64 needs R/B swapped
+                img = QImage(data, w, h, w * 8, QImage.Format.Format_RGBA64).rgbSwapped()
+            else:                # BGRA 8-bit == ARGB32 in little-endian memory
+                img = QImage(data, w, h, w * 4, QImage.Format.Format_ARGB32).copy()
+            ok = img.save(self._saveas_out, None, 95)
+            self._set_status(("Saved: " if ok else "Could not save: ") + self._saveas_out)
             self._saveas_out = None
             return
         clarity_info = result.get("clarity")

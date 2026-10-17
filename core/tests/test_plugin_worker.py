@@ -131,7 +131,7 @@ class DialogTest(unittest.TestCase):
             app = QApplication.instance() or QApplication(sys.argv)
             from ref_grade.dialog import RefGradeDialog
             dlg = RefGradeDialog()
-            self.assertEqual(dlg.windowTitle(), "RefGrade")
+            self.assertTrue(dlg.windowTitle().startswith("REFgrade"))
             # Screenshot für die Sichtprüfung
             report_dir = Path(__file__).resolve().parents[1] / "reports"
             report_dir.mkdir(exist_ok=True)

@@ -61,10 +61,10 @@ class TestSectionsTableLut(unittest.TestCase):
         self.assertEqual(SECTIONS["lut"], ())
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 129)
+        self.assertEqual(len(VISIBLE), 131)
 
     def test_fittable_count(self):
-        self.assertEqual(len(FITTABLE), 22)
+        self.assertEqual(len(FITTABLE), 23)
 
 
 class TestLutSectionIdentity(unittest.TestCase):

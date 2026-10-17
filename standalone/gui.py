@@ -1,17 +1,21 @@
 """Standalone RefGrade GUI: volle Dialog-Oberfläche ohne Krita.
 
 Start:
-    python standalone/gui.py [bild.png]
+    python standalone/gui.py [bild.png] [--setup]
 
 Ohne Argument: Datei-Dialog. Mit Argument: direkt laden.
+`--setup` zeigt den Install-Dialog immer (Neu einrichten / Ort ändern).
+Ohne torch im laufenden Python: Install-Dialog (runtime.py), danach Neustart
+mit dem Runtime-Python (torch darf nicht nach PyQt6 im selben Prozess laden).
 Worker wird automatisch gestartet und beim Beenden gestoppt.
 """
 
 from __future__ import annotations
 
+import importlib.util
+import subprocess
 import sys
 import tempfile
-import types
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -21,48 +25,70 @@ for p in (str(_CORE), str(_ROOT / "plugin")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-# ── Krita-Mock (nur für den Import des ref_grade-Pakets) ─────────────────────
-_krita_mod = types.ModuleType("krita")
-
-
-class _FakeKrita:
-    @staticmethod
-    def instance():
-        return _FakeKrita()
-
-    def addExtension(self, *a):
-        pass
-
-    def notifier(self):
-        class _N:
-            def applicationClosing(self):
-                class _S:
-                    def connect(self, *a):
-                        pass
-                return _S()
-        return _N()
-
-
-class _FakeExtension:
-    def __init__(self, parent):
-        pass
-
-    def setup(self):
-        pass
-
-    def createActions(self, window):
-        pass
-
-
-_krita_mod.Krita = _FakeKrita
-_krita_mod.Extension = _FakeExtension
-sys.modules["krita"] = _krita_mod
+# Kein Krita-Mock: ref_grade/__init__.py toleriert das Fehlen von krita
+# (ImportError-Guard), und die hier importierten Module brauchen krita nicht.
 
 import numpy as np
 from PIL import Image
 
 from ref_grade import config, worker_client, worker_process
-from ref_grade.dialog import RefGradeDialog
+
+
+def _has_torch() -> bool:
+    """True, wenn das laufende Python torch importieren kann."""
+    return importlib.util.find_spec("torch") is not None
+
+
+def _restart(python: str) -> None:
+    """App mit anderem Python neu starten und diesen Prozess beenden.
+
+    torch darf nicht nach PyQt6 im selben Prozess geladen werden (DLL-Regel),
+    darum Neustart statt Import.
+    """
+    subprocess.Popen([str(python), __file__, *sys.argv[1:]])
+    sys.exit(0)
+
+
+def _ensure_torch(setup: bool) -> None:
+    """torch sicherstellen; bei Bedarf Install-Dialog zeigen und neu starten.
+
+    Läuft vor jedem PyQt6-Import: hat das Python torch, wird torch zuerst
+    geladen (DLL-Regel); sonst kommt PyQt6 für den Dialog und der Prozess
+    endet über Neustart/Abbruch.
+    """
+    if _has_torch() and not setup:
+        import torch  # noqa: F401  (vor dem PyQt6-Import – DLL-Regel)
+        return
+    from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
+    from ref_grade import runtime
+    from ref_grade.dlg_install import InstallDialog
+
+    app = QApplication(sys.argv)
+    before = config.read_settings().get("python_exe")
+
+    def _install(flavor, log, cancelled):
+        return runtime.install(flavor, log, cancelled, extra=("PyQt6",))
+
+    dlg = InstallDialog(parent=None, install_fn=_install)
+    accepted = dlg.exec() == QDialog.DialogCode.Accepted
+    if not accepted:
+        QMessageBox.information(
+            None, "RefGrade", "Setup cancelled - RefGrade is closing.")
+        sys.exit(0)
+
+    after = config.read_settings().get("python_exe")
+    if after and after != before:
+        target = after  # „Use existing Python“ gewählt
+    elif runtime.is_installed():
+        target = str(runtime.venv_python())
+    elif after and runtime.python_ok(after):
+        target = after
+    else:
+        QMessageBox.critical(
+            None, "RefGrade",
+            "No usable Python with torch was found after the setup.")
+        sys.exit(1)
+    _restart(target)
 
 
 def _read_source(path: Path, tmp: Path) -> dict:
@@ -92,20 +118,66 @@ def _pick_file(parent=None) -> Path | None:
     return Path(path_str) if path_str else None
 
 
+def _apply_window_scheme(win) -> None:
+    """Theme main window (palette + stylesheet) and the native title bar with the active scheme."""
+    from ref_grade import schemes, win_chrome
+    schemes.apply_scheme(win)
+    win_chrome.apply(win, schemes.current_scheme())
+
+
+def build_window(title: str = "REFgrade"):
+    """Build the (empty) main window with toolbar and container, themed — no worker needed.
+
+    Returns (win, lbl_file, btn_open, dlg_container)."""
+    from PyQt6.QtGui import QAction
+    from PyQt6.QtWidgets import QLabel, QMainWindow, QToolBar, QVBoxLayout, QWidget
+    from PyQt6.QtCore import QSettings
+    from ref_grade import schemes
+
+    schemes.set_current(QSettings("RefGrade", "RefGrade").value("scheme", schemes.DEFAULT, type=str))
+    win = QMainWindow()
+    win.setWindowTitle(title)
+    win.resize(1400, 900)
+    central = QWidget()
+    win.setCentralWidget(central)
+    layout = QVBoxLayout(central)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(0)
+
+    tb = QToolBar()
+    tb.setMovable(False)
+    btn_open = QAction("Open…", win)
+    btn_open.setShortcut("Ctrl+O")
+    tb.addAction(btn_open)
+    lbl_file = QLabel("")
+    tb.addWidget(lbl_file)
+    win.addToolBar(tb)
+
+    dlg_container = QWidget()
+    layout.addWidget(dlg_container)
+    _apply_window_scheme(win)
+    return win, lbl_file, btn_open, dlg_container
+
+
 def main() -> None:
+    _ensure_torch("--setup" in sys.argv[1:])
+    args = [a for a in sys.argv[1:] if a != "--setup"]
+
+    # Erst jetzt PyQt6 laden (dialog.py importiert es): torch ist bereits
+    # geladen oder der Prozess endet über _ensure_torch (Neustart/Abbruch).
+    from ref_grade.dialog import RefGradeDialog
     from PyQt6.QtWidgets import (
-        QApplication, QFileDialog, QMainWindow, QToolBar,
-        QLabel, QVBoxLayout, QWidget,
+        QApplication, QFileDialog, QVBoxLayout,
     )
-    from PyQt6.QtGui import QImage, QAction
+    from PyQt6.QtGui import QImage
     from PyQt6.QtCore import Qt
 
     app = QApplication(sys.argv)
-    app.setApplicationName("RefGrade Standalone")
+    app.setApplicationName("REFgrade")
 
     # 1. Bild wählen (CLI-Argument oder Dialog)
-    if len(sys.argv) > 1:
-        img_path = Path(sys.argv[1])
+    if args:
+        img_path = Path(args[0])
         if not img_path.is_file():
             print(f"Fehler: Datei nicht gefunden: {img_path}")
             sys.exit(1)
@@ -118,27 +190,9 @@ def main() -> None:
 
     port = config.PORT
     python = config.python_exe()
+    from ref_grade.version import __version__ as version
 
-    # Hauptfenster mit Toolbar
-    win = QMainWindow()
-    win.setWindowTitle(f"RefGrade — {img_path.name}")
-    win.resize(1400, 900)
-    layout = QVBoxLayout(win)
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(0)
-
-    # Toolbar
-    tb = QToolBar()
-    tb.setMovable(False)
-    btn_open = QAction("Open…", win)
-    btn_open.setShortcut("Ctrl+O")
-    tb.addAction(btn_open)
-    lbl_file = QLabel(f"  {img_path}")
-    tb.addWidget(lbl_file)
-    layout.addWidget(tb)
-
-    dlg_container = QWidget()
-    layout.addWidget(dlg_container)
+    win, lbl_file, btn_open, dlg_container = build_window(f"REFgrade {version} — {img_path.name}")
 
     def load_image(path: Path) -> None:
         nonlocal img_path
@@ -157,12 +211,30 @@ def main() -> None:
         qimg = QImage(data, pil_img.width, pil_img.height, QImage.Format.Format_RGB888).copy()
 
         def on_ok(raw_path: str, layer_name: str, clarity_info: dict | None = None) -> None:
-            out = path.with_name(f"{path.stem}_grad.png")
+            default = str(path.with_name(f"{path.stem}_grad.png"))
+            out, fmt = QFileDialog.getSaveFileName(
+                win, "Save graded image", default,
+                "PNG (*.png);;JPEG (*.jpg *.jpeg);;TIFF (*.tif *.tiff)")
+            if not out:
+                print("Nicht gespeichert")
+                return
+            out_p = Path(out)
+            if out_p.suffix.lower() not in (".png", ".jpg", ".jpeg", ".tif", ".tiff"):
+                default_ext = {"PNG (*.png)": ".png",
+                               "JPEG (*.jpg *.jpeg)": ".jpg",
+                               "TIFF (*.tif *.tiff)": ".tif"}.get(fmt, ".png")
+                out_p = out_p.with_suffix(default_ext)
             arr = np.fromfile(raw_path, dtype=np.uint8).reshape(
                 source["height"], source["width"], 4)
             rgb = np.ascontiguousarray(arr[..., [2, 1, 0]])
-            Image.fromarray(rgb, mode="RGB").save(out, quality=95)
-            print(f"Gespeichert: {out}")
+            img = Image.fromarray(rgb, mode="RGB")
+            if out_p.suffix.lower() in (".jpg", ".jpeg"):
+                img.save(out_p, quality=95)
+            elif out_p.suffix.lower() in (".tif", ".tiff"):
+                img.save(out_p)
+            else:
+                img.save(out_p)
+            print(f"Gespeichert: {out_p}")
 
         def on_update() -> bool:
             return False
@@ -191,10 +263,12 @@ def main() -> None:
             on_ok=on_ok,
             on_update=on_update,
         )
+        dlg.setWindowFlags(Qt.WindowType.Widget)   # embed: a QDialog is a top-level window otherwise
         inner.addWidget(dlg)
         dlg.show()
+        dlg._scheme_combo.currentTextChanged.connect(lambda _n: _apply_window_scheme(win))
         img_path = path
-        win.setWindowTitle(f"RefGrade — {path.name}")
+        win.setWindowTitle(f"REFgrade {version} — {path.name}")
         lbl_file.setText(f"  {path}")
 
     def on_open() -> None:
@@ -207,6 +281,7 @@ def main() -> None:
     # Erstes Bild laden
     load_image(img_path)
     win.show()
+    _apply_window_scheme(win)
 
     try:
         app.exec()

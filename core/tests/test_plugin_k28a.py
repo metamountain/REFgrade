@@ -113,16 +113,13 @@ class TestClipDisplay(K28aTestBase):
 
 
 class TestCurvesChannelReset(K28aTestBase):
-    """Kanal-Reset: nur aktiver Kanal wird zurückgesetzt."""
+    """Sektions-↺ setzt ALLE Kurvenkanäle zurück; CurvesEditor.reset_channel() nur den aktiven."""
 
-    def test_reset_active_channel_only(self):
-        """R und G verbogen, R gewählt → Reset → R identisch, G unverändert;
-        genau ein /preview danach."""
-        previews = []
-
+    def test_section_reset_resets_all_channels(self):
+        """Sektions-↺ (``_curves_channel_reset`` → ``reset_all``): R und G verbogen →
+        Reset → R und G beide identisch; Debounce-Timer danach aktiv."""
         def fake_client(port, path, payload):
             if path == "/preview":
-                previews.append(payload)
                 img_path = str(Path(os.environ.get("TEMP", "/tmp")) / "k28a_curve.png")
                 QImage(100, 100, QImage.Format.Format_RGB32).save(img_path)
                 return {"image": img_path, "histogram": {}, "ms": 5.0}
@@ -132,18 +129,56 @@ class TestCurvesChannelReset(K28aTestBase):
         editor = dlg.curves_editor
 
         # Bend R and G channels
-        r_bent = [[0.0, 0.0], [0.5, 0.7], [1.0, 1.0]]
-        g_bent = [[0.0, 0.0], [0.5, 0.3], [1.0, 1.0]]
-        editor.set_curve("r", r_bent)
-        editor.set_curve("g", g_bent)
+        editor.set_curve("r", [[0.0, 0.0], [0.5, 0.7], [1.0, 1.0]])
+        editor.set_curve("g", [[0.0, 0.0], [0.5, 0.3], [1.0, 1.0]])
 
         # Select R channel
         editor.set_active("r")
 
-        # Trigger channel reset — calls reset_channel() + _schedule_preview()
+        # Trigger the section ↺ button — calls reset_all() + _schedule_preview()
         dlg._curves_channel_reset()
 
         # R should be identity immediately (synchronous)
+        r_curve = editor.get_curve("r")
+        self.assertEqual(len(r_curve), 2)
+        self.assertAlmostEqual(r_curve[0][0], 0.0)
+        self.assertAlmostEqual(r_curve[0][1], 0.0)
+        self.assertAlmostEqual(r_curve[1][0], 1.0)
+        self.assertAlmostEqual(r_curve[1][1], 1.0)
+
+        # G should ALSO be identity (reset_all resets every channel)
+        g_curve = editor.get_curve("g")
+        self.assertEqual(len(g_curve), 2)
+        self.assertAlmostEqual(g_curve[0][0], 0.0)
+        self.assertAlmostEqual(g_curve[0][1], 0.0)
+        self.assertAlmostEqual(g_curve[1][0], 1.0)
+        self.assertAlmostEqual(g_curve[1][1], 1.0)
+
+        # _schedule_preview was called → debounce timer is active
+        self.assertTrue(dlg._debounce_timer.isActive(),
+                        "Debounce-Timer nach Reset nicht aktiv")
+
+        dlg.close()
+        dlg.deleteLater()
+        self.app.processEvents()
+
+    def test_reset_channel_active_only(self):
+        """``CurvesEditor.reset_channel()``: R und G verbogen, R gewählt →
+        reset_channel() → R identisch, G unverändert."""
+        dlg = self._make_dialog()
+        editor = dlg.curves_editor
+
+        # Bend R and G channels
+        editor.set_curve("r", [[0.0, 0.0], [0.5, 0.7], [1.0, 1.0]])
+        editor.set_curve("g", [[0.0, 0.0], [0.5, 0.3], [1.0, 1.0]])
+
+        # Select R channel
+        editor.set_active("r")
+
+        # reset_channel() resets only the active channel
+        editor.reset_channel()
+
+        # R should be identity
         r_curve = editor.get_curve("r")
         self.assertEqual(len(r_curve), 2)
         self.assertAlmostEqual(r_curve[0][0], 0.0)
@@ -155,10 +190,6 @@ class TestCurvesChannelReset(K28aTestBase):
         g_curve = editor.get_curve("g")
         self.assertEqual(len(g_curve), 3)
         self.assertAlmostEqual(g_curve[1][1], 0.3)
-
-        # _schedule_preview was called → debounce timer is active
-        self.assertTrue(dlg._debounce_timer.isActive(),
-                        "Debounce-Timer nach Reset nicht aktiv")
 
         dlg.close()
         dlg.deleteLater()

@@ -17,7 +17,11 @@ _pkg.__path__ = [str(_PLUGIN_DIR)]
 sys.modules["ref_grade"] = _pkg
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
-os.environ.setdefault("REFGRADE_SETTINGS", "RefGradeTests")
+# K28f isolation: use a unique settings namespace so QSettings from other test modules
+# (which share REFGRADE_SETTINGS) cannot leak into this module's dialogs, and vice versa.
+# Pattern like test_chain_order_ui.py. Restored in K28fTestBase.tearDownClass.
+_K28F_SETTINGS = f"RefGradeTests_k28f_{os.getpid()}"
+os.environ["REFGRADE_SETTINGS"] = _K28F_SETTINGS
 
 import torch  # noqa: E402  (before PyQt6 to avoid DLL conflict)
 
@@ -102,13 +106,21 @@ class K28fTestBase(unittest.TestCase):
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication(sys.argv)
         cls.tmp = Path(tempfile.mkdtemp(prefix="refgrade_k28f_"))
+        # Remember the namespace other modules use, so we can restore it afterwards.
+        cls._prev_settings = os.environ.get("REFGRADE_SETTINGS")
 
     @classmethod
     def tearDownClass(cls):
         import shutil
         shutil.rmtree(cls.tmp, ignore_errors=True)
+        # Restore the original REFGRADE_SETTINGS for subsequent test modules.
+        if cls._prev_settings is not None:
+            os.environ["REFGRADE_SETTINGS"] = cls._prev_settings
+        else:
+            os.environ.pop("REFGRADE_SETTINGS", None)
 
     def setUp(self):
+        os.environ["REFGRADE_SETTINGS"] = _K28F_SETTINGS
         _clear_settings()
         self.fake = FakeClient(self.tmp)
         self.source = _make_source(self.tmp)
@@ -129,6 +141,8 @@ class K28fTestBase(unittest.TestCase):
         self.dialog.close()
         self.dialog.deleteLater()
         self.app.processEvents()
+        _clear_settings()
+        os.environ["REFGRADE_SETTINGS"] = _K28F_SETTINGS
 
 
 class TestWheelReset(K28fTestBase):

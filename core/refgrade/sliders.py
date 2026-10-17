@@ -88,6 +88,7 @@ SLIDERS: list[Slider] = [
     Slider("contrast", "contrast", 0.0, 3.0, 1.0, 0.01),
     Slider("pivot", "contrast", 0.0, 1.0, 0.5, 0.01),
     Slider("highlight_rolloff", "contrast", 0.0, 1.0, 0.0, 0.01),
+    Slider("highlight_reconstruct", "contrast", 0.0, 1.0, 0.0, 0.01),
     # tone zones (Lightroom-like)
     Slider("highlights", "contrast", -1.0, 1.0, 0.0, 0.01),
     Slider("shadows", "contrast", -1.0, 1.0, 0.0, 0.01),

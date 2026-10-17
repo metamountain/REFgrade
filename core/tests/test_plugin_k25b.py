@@ -166,6 +166,11 @@ class TestDialogGeometry(unittest.TestCase):
         from PyQt6.QtGui import QImage, QColor
         from ref_grade import style
         from ref_grade.dialog import RefGradeDialog
+        from PyQt6.QtCore import QSettings
+        # Isolation: other modules (e.g. k17) share this settings namespace and may have
+        # stored layout_mode "V"/"H" — these tests assume the default AUTO.
+        if os.environ.get("REFGRADE_SETTINGS"):
+            QSettings("RefGrade", os.environ["REFGRADE_SETTINGS"]).remove("layout_mode")
         style.set_scale(scale.unit(w, h))
         img = QImage(img_w, img_h, QImage.Format.Format_RGB32)
         img.fill(QColor(80, 120, 160))

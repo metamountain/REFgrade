@@ -44,7 +44,7 @@ class TestGradeIndividualSlider(unittest.TestCase):
     """Jeder Regler vom Standard weg → Bild ändert sich."""
 
     # Regler, die nicht von grade() verwendet werden
-    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze"}
+    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze", "highlight_reconstruct"}
     # Regler, die nur in Kombination wirken: name → zusätzliche Werte
     COMBO = {
         "pivot": {"contrast": 1.5},
@@ -95,7 +95,7 @@ class TestGradeGradient(unittest.TestCase):
     """Gradient nach jedem Regler existiert und ist endlich."""
 
     # Regler, die nicht von grade() verwendet werden
-    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze"}
+    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze", "highlight_reconstruct"}
 
     def test_gradients(self):
         dev = _get_device()

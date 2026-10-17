@@ -22,6 +22,7 @@ from refgrade import session as sess
 from refgrade import whitebalance
 from refgrade import version
 from refgrade.curves import validate as curves_validate
+from refgrade.device import pick_device
 from refgrade.help import HELP
 from refgrade.rawio import save_png, write_raw
 from refgrade.sliders import SLIDERS
@@ -154,7 +155,7 @@ class Handler(BaseHTTPRequestHandler):
         t0 = time.perf_counter()
         try:
             if self.path == "/health":
-                device = "cuda" if torch.cuda.is_available() else "cpu"
+                device = pick_device().type
                 self._send_json(200, {"ok": True, "version": version.label(), "device": device,
                                       "auto_sections": list(auto.AUTO_SECTIONS)})
                 self._log_request(200, t0)

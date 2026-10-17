@@ -320,7 +320,7 @@ class LutMixin:
         if self._client is None or self._session_id is None or self._save_lut is None:
             return
         name = self._first_ref_name()
-        excluded = [n for n in ("clarity", "texture", "dehaze")
+        excluded = [n for n in ("clarity", "texture", "dehaze", "highlight_reconstruct")
                     if self._get_slider_value(n) != 0.0]
         suffix = f" ({', '.join(n.capitalize() for n in excluded)} not included)" if excluded else ""
         lut_folder = self._settings.value("lut_folder", "") or str(config.LUTS)
@@ -331,7 +331,7 @@ class LutMixin:
             return
         self._lut_dir_last = str(Path(path).parent)
         vals = self._values()
-        for n in ("clarity", "texture", "dehaze"):
+        for n in ("clarity", "texture", "dehaze", "highlight_reconstruct"):
             vals[n] = 0.0
         payload = {
             "session": self._session_id,

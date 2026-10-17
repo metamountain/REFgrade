@@ -14,9 +14,11 @@ import torch
 import torch.nn.functional as F
 
 from . import rawio
+from .device import pick_device, synchronize
 from .clarity import apply as clarity_apply
 from .dehaze import apply as dehaze_apply
 from .texture import apply as texture_apply
+from .recover import apply as reconstruct_apply
 from .color import rgb_to_lab, lab_to_rgb
 from .curves import is_identity as curves_is_identity, validate as curves_validate
 from .fit_pair import pair_shift as _pair_shift
@@ -88,7 +90,7 @@ def open_session(
         Session-Instanz.
     """
     if device is None:
-        device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        device = pick_device()
 
     source_full, alpha = rawio.read_raw(raw, width, height, depth)
 
@@ -422,7 +424,7 @@ def _section_fns(s: Session, refs: list[str], method: str, vals: dict, mix: dict
     v_ref = section_values(vals, "reference")
     source_fns["reference"] = lambda x: protect(x, method_fn(x), v_ref)
     if timing is not None:
-        torch.cuda.synchronize()
+        synchronize(s.source.device)
         timing["lut_method_fn"] = (_time.perf_counter() - _t0) * 1000.0
 
     # tone, color, wheels, hsl: grade(x, v_section)
@@ -572,7 +574,7 @@ def build_lut(s: Session, refs: list[str], method: str, values: dict,
     _t2 = _time.perf_counter()
     lut = _build_lut_cached(s, source_fns, mix, method, refs, vals, lut_size)
     if timing is not None:
-        torch.cuda.synchronize()
+        synchronize(s.source.device)
         timing["lut_build"] = (_time.perf_counter() - _t2) * 1000.0
     s.luts[key] = lut
     return lut
@@ -716,12 +718,12 @@ def preview(
             _t_lut = _time.perf_counter()
         lut = build_lut(s, refs, method, vals, mix, timing=timing, lut_size=lut_size)
         if timing is not None:
-            torch.cuda.synchronize()
+            synchronize(s.source.device)
             timing["lut_total"] = (_time.perf_counter() - _t_lut) * 1000.0
         _t_apply = _time.perf_counter()
         result = _lut_apply(img, lut)
         if timing is not None:
-            torch.cuda.synchronize()
+            synchronize(s.source.device)
             timing["lut_apply"] = (_time.perf_counter() - _t_apply) * 1000.0
 
     # Spatial effects (not in the LUT); apply after (full stage only)
@@ -729,6 +731,9 @@ def preview(
         _t_spatial = _time.perf_counter()
     if stage == "full":
         full_size = max(s.source_full.shape[1], s.source_full.shape[2])
+        reconstruct_val = vals.get("highlight_reconstruct", 0.0)
+        if reconstruct_val != 0.0:
+            result = reconstruct_apply(result, reconstruct_val)
         clarity_val = vals.get("clarity", 0.0)
         if clarity_val != 0.0:
             result = clarity_apply(result, clarity_val, full_size)
@@ -739,7 +744,7 @@ def preview(
         if dehaze_val != 0.0:
             result = dehaze_apply(result, dehaze_val, full_size)
     if timing is not None:
-        torch.cuda.synchronize()
+        synchronize(s.source.device)
         timing["spatial"] = (_time.perf_counter() - _t_spatial) * 1000.0
 
     from .scope import scope_img
@@ -768,7 +773,7 @@ def preview(
         },
     }
     if timing is not None:
-        torch.cuda.synchronize()
+        synchronize(s.source.device)
         timing["histograms"] = (_time.perf_counter() - _t_hist) * 1000.0
     if method == "pair":
         _, pair_error = _get_pair_lut(s, refs, LUT_SIZE)
@@ -838,6 +843,9 @@ def apply_full(s: Session, refs: list[str], method: str, values: dict,
 
     # Spatial effects (not in the LUT); apply after
     full_size = max(s.source_full.shape[1], s.source_full.shape[2])
+    reconstruct_val = vals.get("highlight_reconstruct", 0.0)
+    if reconstruct_val != 0.0:
+        result = reconstruct_apply(result, reconstruct_val)
     clarity_val = vals.get("clarity", 0.0)
     if clarity_val != 0.0:
         result = clarity_apply(result, clarity_val, full_size)
@@ -968,6 +976,9 @@ def crop(
 
     # Spatial effects (not in the LUT); apply after (at full resolution)
     full_size = max(H, W)
+    reconstruct_val = vals.get("highlight_reconstruct", 0.0)
+    if reconstruct_val != 0.0:
+        result = reconstruct_apply(result, reconstruct_val)
     clarity_val = vals.get("clarity", 0.0)
     if clarity_val != 0.0:
         result = clarity_apply(result, clarity_val, full_size)

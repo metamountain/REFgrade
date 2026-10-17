@@ -10,8 +10,8 @@ from . import config
 # Column 1 starts with method + FIT, column 2 ends with LUT…/CANCEL/OK. UI language: English.
 COLUMN_1 = (("Reference", ("light_strength", "color_strength", "protect_shadows",
                        "protect_highlights")),
-            ("Tone", ("exposure", "contrast", "highlights", "shadows", "whites", "blacks",
-                       "clarity", "texture", "dehaze")),
+            ("Tone", ("exposure", "contrast", "highlights", "highlight_rolloff", "highlight_reconstruct",
+                       "shadows", "whites", "blacks", "clarity", "texture", "dehaze")),
             ("RGB", ("rgb_m_gamma", "rgb_m_pedestal", "rgb_m_gain",
                      "rgb_r_gamma", "rgb_r_pedestal", "rgb_r_gain",
                      "rgb_g_gamma", "rgb_g_pedestal", "rgb_g_gain",
@@ -20,7 +20,9 @@ COLUMN_1 = (("Reference", ("light_strength", "color_strength", "protect_shadows"
 COLUMN_2 = (("Color", ("temperature", "tint", "saturation", "vibrance")),)
 LABELS = {"light_strength": "Light", "color_strength": "Color", "protect_shadows": "Protect shadows",
           "protect_highlights": "Protect highlights", "exposure": "Exposure", "contrast": "Contrast",
-          "highlights": "Highlights", "shadows": "Shadows", "whites": "Whites", "blacks": "Blacks",
+            "highlights": "Highlights", "highlight_rolloff": "Recover",
+            "highlight_reconstruct": "Reconstruct",
+            "shadows": "Shadows", "whites": "Whites", "blacks": "Blacks",
           "clarity": "Clarity", "texture": "Texture", "dehaze": "Dehaze",
           "temperature": "Temperature", "tint": "Tint",
           "saturation": "Saturation", "vibrance": "Vibrance",

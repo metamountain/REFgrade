@@ -193,10 +193,10 @@ class TestSectionsK9a(unittest.TestCase):
     """Sections: VISIBLE=47, FITTABLE=22, hsl-Namen."""
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 129)
+        self.assertEqual(len(VISIBLE), 131)
 
     def test_fittable_count(self):
-        self.assertEqual(len(FITTABLE), 22)
+        self.assertEqual(len(FITTABLE), 23)
 
     def test_hsl_names_match_sliders(self):
         """SECTIONS["hsl"] enthält genau die 18 sel_* aus SLIDERS."""

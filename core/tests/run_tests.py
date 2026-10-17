@@ -9,6 +9,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))   # for `from slow import slow`
 os.environ.setdefault("REFGRADE_SETTINGS", "RefGradeTests")   # tests never touch the user's settings
+# ... nor the user's config.json (python_exe / runtime_dir there changed config tests, 2026-10-17)
+_cfg = Path(__file__).resolve().parents[2] / "tmp" / f"test_config_{os.getpid()}.json"
+_cfg.parent.mkdir(exist_ok=True)
+_cfg.unlink(missing_ok=True)
+os.environ.setdefault("REFGRADE_CONFIG", str(_cfg))
 if "--full" in sys.argv:
     os.environ["REFGRADE_SLOW"] = "1"
 

@@ -7,11 +7,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from .device import pick_device
+
 _EPS = 1e-6
 
 
 def _default_device() -> torch.device:
-    return torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+    return pick_device()
 
 
 def build(fn: callable, size: int = 33, title: str = "", device: torch.device | None = None) -> dict:

@@ -458,6 +458,8 @@ class TestRenderEst(unittest.TestCase):
         self.assertEqual(render_est.progress(0, 100), 0.0)
 
 
+@unittest.skipIf(os.environ.get("CUDA_VISIBLE_DEVICES") == "-1",
+                 "GPU bench; GPU hidden for test runs (keeps VRAM free for BeeLlama)")
 class TestBenchRender(unittest.TestCase):
     """bench_render.py --quick läuft durch und schreibt render_seed.json."""
 

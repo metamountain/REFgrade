@@ -10,7 +10,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 # Package-Modul ohne __init__.py-Ausführung (krita fehlt im Systempython)
 _PLUGIN_DIR = Path(__file__).resolve().parents[2] / "plugin" / "ref_grade"
@@ -323,6 +323,24 @@ class TestConfigPythonExe(_Base):
                 del os.environ["REFGRADE_PYTHON"]
             else:
                 os.environ["REFGRADE_PYTHON"] = old
+
+    def test_stored_python_exe_first(self):
+        # K38c: gespeichertes python_exe hat Vorrang, wenn python_ok.
+        old_cfg = os.environ.get("REFGRADE_CONFIG")
+        cfg = Path(self._tmp.name) / "config.json"
+        os.environ["REFGRADE_CONFIG"] = str(cfg)
+        runtime.reset_cache()
+        try:
+            config.write_settings({"python_exe": "C:/stored/python.exe"})
+            with patch.object(runtime, "python_ok", return_value=True):
+                result = config.python_exe()
+            self.assertEqual(result, "C:/stored/python.exe")
+        finally:
+            if old_cfg is None:
+                os.environ.pop("REFGRADE_CONFIG", None)
+            else:
+                os.environ["REFGRADE_CONFIG"] = old_cfg
+            runtime.reset_cache()
 
 
 class TestPythonOk(_Base):

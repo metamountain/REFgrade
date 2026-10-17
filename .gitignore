@@ -32,3 +32,6 @@ __pycache__/
 /core/sections_check_out/
 /plugin/ref_grade/installed_version.json
 *.spec.bak
+
+# Scratch files of build agents (QWEN.md rule)
+/tmp/

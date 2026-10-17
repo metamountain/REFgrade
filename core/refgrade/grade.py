@@ -126,6 +126,27 @@ def _lgg(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.Tensor
     return out
 
 
+def _rolloff(y: torch.Tensor, r: float | torch.Tensor) -> torch.Tensor:
+    """Highlight-Rolloff als echte Schulter: holt Luma > Knie k = 1 − 0.6·r per tanh weich zurück.
+
+    r == 0 → Eingabe exakt (bitgleich) unverändert. Unter k bleibt jedes Pixel exakt; über k wird
+    Yn = k + (1−k)·tanh((Y−k)/(1−k)) und das Pixel mit Yn/max(Y, 1e-6) multipliziert, damit der
+    Farbton bleibt. Kein Clamp hier — die Kette entscheidet, was am Ende geclippt wird.
+    """
+    r_t = torch.as_tensor(r, dtype=y.dtype, device=y.device)
+    if r_t.item() == 0.0:
+        return y
+    k = 1.0 - 0.6 * r_t
+    Y = luma(y)
+    Yn = torch.where(
+        Y <= k,
+        Y,
+        k + (1.0 - k) * torch.tanh((Y - k) / (1.0 - k).clamp_min(_EPS)),
+    )
+    scale = Yn / Y.clamp_min(_EPS)
+    return y * scale
+
+
 def _contrast(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.Tensor:
     """Kontrast um pivot + Highlight-Rolloff."""
     d = _defaults()
@@ -133,11 +154,7 @@ def _contrast(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.T
     pivot = vals.get("pivot", d["pivot"])
     rolloff = vals.get("highlight_rolloff", d["highlight_rolloff"])
     y = (x - pivot) * contrast + pivot
-    Y = luma(y)
-    t = ((Y - 0.7) / 0.3).clamp(0.0, 1.0)
-    t_smooth = t * t * (3.0 - 2.0 * t)
-    scale = 1.0 - rolloff * 0.5 * t_smooth
-    y = y * scale
+    y = _rolloff(y, rolloff)
     return y
 
 

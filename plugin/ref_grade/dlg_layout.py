@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QRegularExpression, QSize, QTimer, Qt
-from PyQt6.QtGui import QColor, QFontMetrics, QIcon, QPainter, QPen, QPixmap
-from PyQt6.QtWidgets import QLabel, QPushButton, QWidget
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPen, QPixmap
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
-from . import scale, schemes, style
+from . import scale, schemes, style, win_chrome
+from .version import __version__
 from .widgets import (Histogram, Parade, ScopeButton, Vectorscope, Waveform,
                       ColorWheel, SliderRow, small_button)
 from .dlg_common import WHEELS
@@ -271,6 +272,8 @@ class LayoutMixin:
         self._scope_view = view
         self._settings.setValue("scope_view", view)
         self._apply_scope_view()
+        if hasattr(self, "_trigger_preview"):    # parade/wave are only computed when visible
+            self._trigger_preview()
 
     def _apply_scope_view(self) -> None:
         """Show the active scope widget, hide the other; sync button states."""
@@ -352,8 +355,40 @@ class LayoutMixin:
             self._fit_sections()
 
 
+    def _build_wordmark(self) -> QWidget:
+        """K41a: 'REF' (accent, bold) + 'grade' (text, light) + small dim 'v<version>'."""
+        box = QWidget()
+        box.setObjectName("wordmark")
+        lay = QHBoxLayout(box)
+        lay.setContentsMargins(0, 0, 4, 0)
+        lay.setSpacing(0)
+        self._wm_ref = QLabel("REF")
+        self._wm_grade = QLabel("grade")
+        self._wm_version = QLabel(f" v{__version__}")
+        for lbl, role, weight in ((self._wm_ref, "title", QFont.Weight.Bold),
+                                  (self._wm_grade, "title", QFont.Weight.Light),
+                                  (self._wm_version, "small", QFont.Weight.Normal)):
+            lbl.setFont(style.font(role, weight))
+            lbl.setProperty("font_role", role)
+            lbl.setProperty("font_weight", weight)
+            lay.addWidget(lbl)
+        self._wm_ref.setObjectName("wm_ref")
+        self._wm_version.setObjectName("wm_version")
+        self._wm_ref.setProperty("wordmark", "ref")
+        self._wm_grade.setProperty("wordmark", "grade")
+        self._wm_version.setProperty("wordmark", "ver")
+        self._restyle_wordmark()
+        return box
+
+    def _restyle_wordmark(self) -> None:
+        """Colours come from the stylesheet (QLabel[wordmark=...]); re-polish after a scheme change."""
+        for lbl in (self._wm_ref, self._wm_grade, self._wm_version):
+            lbl.style().unpolish(lbl)
+            lbl.style().polish(lbl)
+
     def showEvent(self, e) -> None:  # noqa: N802
         super().showEvent(e)
+        win_chrome.apply(self, schemes.current_scheme())
         self._apply_layout_mode()
         self._fit_sections()
         self._setup_lut_combo_view()   # K27e: idempotent; combo.view() blocks pre-show

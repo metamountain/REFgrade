@@ -7,31 +7,72 @@ from __future__ import annotations
 
 import math
 
-from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QLinearGradient, QPainter, QPen
+from PyQt6.QtCore import QPointF, QRect, QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import QSizePolicy, QWidget
 
-from . import style
+from . import schemes, style
 from .pchip import pchip_curve, pchip_cyclic_curve
 
 CHANNELS = ("rgb", "r", "g", "b")
 HUE_CHANNELS = ("hue_hue", "hue_sat", "hue_lum", "lum_sat", "sat_sat")
 ALL_CHANNELS = CHANNELS + HUE_CHANNELS
-CHANNEL_COLORS = {
-    "rgb": style.TEXT,
-    "r": "#B43C3C",
-    "g": "#3CB43C",
-    "b": "#3C3CB4",
-    "hue_hue": "#CC8833",
-    "hue_sat": "#CC3388",
-    "hue_lum": "#3388CC",
-    "lum_sat": "#33CC88",
-    "sat_sat": "#8833CC",
-}
+CHANNEL_COLORS = {"rgb": style.TEXT, **style.CHANNEL_COLORS}
+
+
+def _sc(role: str, alpha: int = 255) -> QColor:
+    """Active-scheme colour (``bg``/``surface``/``text``/``accent``/``dim``) with alpha."""
+    c = QColor(getattr(schemes.current_scheme(), role))
+    c.setAlpha(alpha)
+    return c
 _HUE_CYCLIC = ("hue_hue", "hue_sat", "hue_lum")
 _MAX_POINTS = 16
 _IDENTITY = [[0.0, 0.0], [1.0, 1.0]]
 _HUE_IDENTITY = [[0.0, 0.5], [1.0, 0.5]]
+
+# Spelled-out channel names for the top-left overlay (user 2026-10-16: "title ausgeschrieben").
+CHANNEL_TITLES = {
+    "rgb": "RGB",
+    "r": "Red",
+    "g": "Green",
+    "b": "Blue",
+    "hue_hue": "Hue vs Hue",
+    "hue_sat": "Hue vs Saturation",
+    "hue_lum": "Hue vs Lightness",
+    "lum_sat": "Lightness vs Saturation",
+    "sat_sat": "Saturation vs Saturation",
+}
+
+# Detailed per-channel help for the bottom-right overlay (all English).
+CHANNEL_HELP = {
+    "rgb": ("Brightness curve for all three channels together. Across: input brightness, "
+            "left = shadows, right = highlights. Up: brighter, down: darker. An S-shape adds "
+            "contrast. The flat diagonal means no change."),
+    "r": ("Red channel curve. Across: brightness. Up adds red, down adds cyan in that "
+          "brightness range. Lift the lower end for warm shadows, the upper end for warm "
+          "highlights."),
+    "g": ("Green channel curve. Across: brightness. Up adds green, down adds magenta in "
+          "that brightness range."),
+    "b": ("Blue channel curve. Across: brightness. Up adds blue, down adds yellow in that "
+          "brightness range. Lift the upper end for cool highlights (the classic "
+          "teal-and-orange look)."),
+    "hue_hue": ("Hue vs Hue. Across: the colour of a pixel (red to yellow, green, cyan, "
+                "blue, magenta, back to red). Up/down shifts that colour to a neighbouring "
+                "hue, e.g. turn orange skin more red or green grass more yellow. The flat "
+                "middle line means no change."),
+    "hue_sat": ("Hue vs Saturation. Across: the colour of a pixel. Up: that colour gets more "
+                "intense; down: it fades toward grey. E.g. calm a loud blue sky while leaving "
+                "reds vivid. The flat middle line means no change."),
+    "hue_lum": ("Hue vs Lightness. Across: the colour of a pixel. Up: that colour gets "
+                "brighter; down: darker. E.g. darken a blue sky or brighten foliage. The flat "
+                "middle line means no change."),
+    "lum_sat": ("Lightness vs Saturation. Across: dark to bright pixels. Up: more colour "
+                "there; down: less. E.g. take the colour out of the deep shadows. The flat "
+                "middle line means no change."),
+    "sat_sat": ("Saturation vs Saturation. Across: grey to fully coloured pixels. Up: boost "
+                "them; down: reduce them. E.g. lift muted colours without pushing loud ones "
+                "further. The flat middle line means no change."),
+}
 
 
 class CurvesEditor(QWidget):
@@ -59,6 +100,8 @@ class CurvesEditor(QWidget):
         self._sel_idx: int | None = None          # selected point (Krita-style handles)
         self._hover_idx: int | None = None
         self._doomed = False                      # dragged outside: released → deleted
+        self._hover_help = False                  # mouse over editor → show help overlay
+        self._help_pinned = False                 # K40a: "?" glyph toggles the help panel permanently
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -96,6 +139,13 @@ class CurvesEditor(QWidget):
         self.update()
         self.changed.emit(self.active_channel, self.get_curve(self.active_channel))
 
+    def reset_all(self) -> None:
+        """Reset every channel to identity and emit changed (active channel)."""
+        for ch in ALL_CHANNELS:
+            self.curves[ch] = self._identity_for(ch)
+        self.update()
+        self.changed.emit(self.active_channel, self.get_curve(self.active_channel))
+
     # ── Geometrie ─────────────────────────────────────────────────────────────
 
     def _plot_rect(self) -> QRectF:
@@ -130,16 +180,16 @@ class CurvesEditor(QWidget):
         elif ch == "lum_sat":
             # Schwarz → Weiß, 25 %
             grad = QLinearGradient(r.left(), 0, r.right(), 0)
-            c0 = QColor(0, 0, 0); c0.setAlphaF(0.25)
-            c1 = QColor(255, 255, 255); c1.setAlphaF(0.25)
+            c0 = QColor(style.RAMP_BLACK); c0.setAlphaF(0.25)
+            c1 = QColor(style.RAMP_WHITE); c1.setAlphaF(0.25)
             grad.setColorAt(0.0, c0)
             grad.setColorAt(1.0, c1)
             p.fillRect(r, grad)
         elif ch == "sat_sat":
             # Grau → gesättigt, 25 %
             grad = QLinearGradient(r.left(), 0, r.right(), 0)
-            c0 = QColor(128, 128, 128); c0.setAlphaF(0.25)
-            c1 = QColor(255, 0, 0); c1.setAlphaF(0.25)
+            c0 = QColor(style.RAMP_GREY); c0.setAlphaF(0.25)
+            c1 = QColor(style.RAMP_RED); c1.setAlphaF(0.25)
             grad.setColorAt(0.0, c0)
             grad.setColorAt(1.0, c1)
             p.fillRect(r, grad)
@@ -152,6 +202,116 @@ class CurvesEditor(QWidget):
             p.drawLine(QPointF(r.x(), y), QPointF(r.x() + r.width(), y))
         else:
             p.drawLine(r.bottomLeft(), r.topRight())
+
+    # ── Overlay (title top-left, help bottom-right) ───────────────────────────
+
+    def _reset_rect(self, r: QRectF) -> QRectF:
+        """Bottom-right hit rect of the per-curve reset glyph."""
+        s = 22.0
+        return QRectF(r.right() - s - 6, r.bottom() - s - 6, s, s)
+
+    def _help_rect(self, r: QRectF) -> QRectF:
+        """K40a: hit rect of the help glyph, same size as the reset glyph, left of it."""
+        s = 22.0
+        rr = self._reset_rect(r)
+        return QRectF(rr.x() - s - 6, rr.y(), s, s)
+
+    def _background_color_at(self, fx: float) -> QColor:
+        """Background colour at horizontal fraction fx (0=left, 1=right) as drawn by
+        _draw_background (gradient blended 25 % over BLACK)."""
+        base = QColor(style.BLACK)
+        ch = self.active_channel
+        if ch in _HUE_CYCLIC:
+            fg = QColor.fromHsvF(max(0.0, min(1.0, fx)), 1.0, 1.0)
+        elif ch == "lum_sat":
+            v = int(max(0.0, min(1.0, fx)) * 255)
+            fg = QColor(v, v, v)
+        elif ch == "sat_sat":
+            t = max(0.0, min(1.0, fx))
+            fg = QColor(int(128 + t * 127), int(128 - t * 128), int(128 - t * 128))
+        else:
+            return base
+        fg.setAlphaF(0.25)
+        return self._blend(fg, base)
+
+    @staticmethod
+    def _blend(fg: QColor, bg: QColor) -> QColor:
+        a = fg.alphaF()
+        return QColor(int(fg.red() * a + bg.red() * (1 - a)),
+                      int(fg.green() * a + bg.green() * (1 - a)),
+                      int(fg.blue() * a + bg.blue() * (1 - a)))
+
+    @staticmethod
+    def _luminance(c: QColor) -> float:
+        def chan(v: int) -> float:
+            x = v / 255
+            return x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+        return 0.2126 * chan(c.red()) + 0.7152 * chan(c.green()) + 0.0722 * chan(c.blue())
+
+    def _draw_overlays(self, p: QPainter, r: QRectF) -> None:
+        """Top-left: spelled-out channel title (always visible, black/white by the
+        background behind it). Bottom-right: per-curve reset glyph (always) and, on
+        hover, a detailed help panel for the active channel (hidden while dragging)."""
+        # ── Title (top-left, always) ──
+        title = CHANNEL_TITLES.get(self.active_channel, self.active_channel)
+        f_title = style.font("small", QFont.Weight.Bold)
+        fm_title = QFontMetrics(f_title)
+        p.setFont(f_title)
+        pad_x, pad_y = 6, 3
+        tw, th = fm_title.horizontalAdvance(title), fm_title.height()
+        text_col = _sc("text")
+        pill_col = _sc("surface", 200)
+        tx, ty = r.x() + 6, r.y() + 6
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(pill_col)
+        p.drawRoundedRect(QRectF(tx, ty, tw + 2 * pad_x, th + 2 * pad_y), 3, 3)
+        p.setPen(QPen(text_col))
+        p.drawText(QRectF(tx + pad_x, ty + pad_y, tw, th),
+                   Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, title)
+
+        # ── Per-curve reset glyph (bottom-right, always) ──
+        rr = self._reset_rect(r)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(_sc("surface", 200))
+        p.drawRoundedRect(rr, 4, 4)
+        f_glyph = style.font("small", QFont.Weight.Bold)
+        p.setFont(f_glyph)
+        p.setPen(QPen(_sc("text")))
+        p.drawText(rr, Qt.AlignmentFlag.AlignCenter, "\u21BA")
+
+        # ── Help glyph (K40a: left of the reset glyph, same size and style) ──
+        hr = self._help_rect(r)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(_sc("surface", 200))
+        p.drawRoundedRect(hr, 4, 4)
+        p.setPen(QPen(_sc("text")))
+        p.drawText(hr, Qt.AlignmentFlag.AlignCenter, "?")
+
+        # ── Help panel (bottom-right, on hover or pinned, left of the help glyph) ──
+        if not (self._hover_help or self._help_pinned) or self._drag_idx is not None:
+            return
+        help_text = CHANNEL_HELP.get(self.active_channel, "")
+        if not help_text:
+            return
+        f_help = style.font("small")
+        fm_help = QFontMetrics(f_help)
+        p.setFont(f_help)
+        pad = 8
+        panel_w = min(int(r.width() * 0.6), 400)
+        flags = (Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
+                 | Qt.TextFlag.TextWordWrap)
+        h = fm_help.boundingRect(QRect(0, 0, panel_w - 2 * pad, 1000), flags, help_text).height()
+        panel_h = h + 2 * pad
+        panel_x = hr.x() - panel_w - 6
+        panel_y = r.bottom() - panel_h - 6
+        help_text_col = _sc("text")
+        help_pill_col = _sc("surface", 230)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(help_pill_col)
+        p.drawRoundedRect(QRectF(panel_x, panel_y, panel_w, panel_h), 4, 4)
+        p.setPen(QPen(help_text_col))
+        p.drawText(QRectF(panel_x + pad, panel_y + pad, panel_w - 2 * pad, panel_h - 2 * pad),
+                   flags, help_text)
 
     def _curve_values(self, ch: str, n: int) -> list[float]:
         """PCHIP-Werte für einen Kanal (zyklisch oder linear)."""
@@ -184,7 +344,7 @@ class CurvesEditor(QWidget):
             for i, v in enumerate(self.histogram):
                 h = v / peak * r.height()
                 p.fillRect(QRectF(r.x() + i * r.width() / n, r.y() + r.height() - h,
-                                  r.width() / n + 0.5, h), QColor(255, 255, 255, 26))
+                                  r.width() / n + 0.5, h), _sc("text", 26))
 
         # Gitter 4×4
         p.setPen(QPen(QColor(style.LINE), 1))
@@ -233,6 +393,9 @@ class CurvesEditor(QWidget):
                 p.drawLine(pos + QPointF(-8, -8), pos + QPointF(8, 8))
                 p.drawLine(pos + QPointF(-8, 8), pos + QPointF(8, -8))
 
+        # Overlays on top: title (top-left), reset glyph + help (bottom-right)
+        self._draw_overlays(p, r)
+
     # ── Maus ──────────────────────────────────────────────────────────────────
 
     def _hit_point(self, pos: QPointF) -> int | None:
@@ -258,6 +421,15 @@ class CurvesEditor(QWidget):
 
     def mousePressEvent(self, e) -> None:  # noqa: N802
         pts = self.curves[self.active_channel]
+        # K40a: help glyph (left of the reset glyph): left click pins/unpins the help panel.
+        if e.button() == Qt.MouseButton.LeftButton and self._help_rect(self._plot_rect()).contains(e.position()):
+            self._help_pinned = not self._help_pinned
+            self.update()
+            return
+        # Per-curve reset glyph (bottom-right): left click resets the active channel only.
+        if e.button() == Qt.MouseButton.LeftButton and self._reset_rect(self._plot_rect()).contains(e.position()):
+            self.reset_channel()
+            return
         if e.button() == Qt.MouseButton.RightButton or \
            (e.button() == Qt.MouseButton.LeftButton and e.modifiers() & Qt.KeyboardModifier.ShiftModifier):
             idx = self._hit_point(e.position())
@@ -360,10 +532,16 @@ class CurvesEditor(QWidget):
         self.drag_stopped.emit()
         self._emit()
 
+    def enterEvent(self, _e) -> None:  # noqa: N802
+        self._hover_help = True
+        self.update()
+
     def leaveEvent(self, _e) -> None:  # noqa: N802
         if self._hover_idx is not None:
             self._hover_idx = None
-            self.update()
+        if self._hover_help:
+            self._hover_help = False
+        self.update()
 
     def keyPressEvent(self, e) -> None:  # noqa: N802
         """Del/Backspace deletes the selected point; arrows nudge it (Shift = ×10)."""

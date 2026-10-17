@@ -83,13 +83,17 @@ usually `%APPDATA%\krita`). To free the disk space used by the runtime, delete
 
 ## Standalone (ohne Krita)
 
+Extract the release ZIP (`dist/refgrade-<version>.zip`) and run `refgrade.bat`:
+
 ```bash
-python standalone/gui.py /path/to/image.jpg
+refgrade.bat [image.jpg]
 ```
 
-- Opens the full RefGrade GUI with the given image (no argument → file dialog)
-- Works without a Krita installation
-- Requires: Python 3.10+, PyTorch, PyQt6
+- First start bootstraps a Python 3.12 runtime (via `uv`) — no Python or admin rights needed.
+- Opens the full RefGrade GUI with the given image (no argument → file dialog).
+- Works without a Krita installation.
+- `refgrade.bat --setup` opens the GUI and shows the install dialog (new setup / change location).
+- PyTorch is installed by the GUI on first start (see the install dialog).
 
 ## LUT output
 

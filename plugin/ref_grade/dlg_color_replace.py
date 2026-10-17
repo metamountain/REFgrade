@@ -9,7 +9,7 @@ from PyQt6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (QGridLayout, QLabel, QPushButton,
                               QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 
-from . import cursors, scale, style
+from . import cursors, scale, schemes, style
 from .widgets import ColorWheel, SectionHeader, SliderRow
 
 MAX_INSTANCES = 8
@@ -70,12 +70,12 @@ class BrightBar(QWidget):
         p = QPainter(self)
         w, h = self.width(), self.height()
         grad = QLinearGradient(0, 0, w, 0)
-        grad.setColorAt(0.0, QColor(0, 0, 0))
-        grad.setColorAt(1.0, QColor(255, 255, 255))
+        grad.setColorAt(0.0, QColor(style.RAMP_BLACK))
+        grad.setColorAt(1.0, QColor(style.RAMP_WHITE))
         p.fillRect(0, 0, w, h, QBrush(grad))
         hx = int(round(self._value * (w - 1)))
         # handle: light core with dark edges → visible on both the black and white ends
-        p.setPen(QPen(QColor(0, 0, 0), 4))
+        p.setPen(QPen(QColor(style.RAMP_BLACK), 4))
         p.drawLine(hx, 0, hx, h)
         p.setPen(QPen(QColor(style.ACCENT_HI), 2))
         p.drawLine(hx, 0, hx, h)
@@ -90,7 +90,7 @@ class _ColorSquare(QWidget):
 
     def __init__(self, tip: str = "", parent: QWidget | None = None):
         super().__init__(parent)
-        self._color = "#808080"
+        self._color = style.RAMP_GREY
         self.setCursor(cursors.loupe())
         if tip:
             self.setToolTip(tip)
@@ -115,7 +115,7 @@ class _ColorSquare(QWidget):
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
         p.fillRect(0, 0, self.width(), self.height(), QBrush(QColor(self._color)))
-        p.setPen(QPen(QColor("#2A2A2A"), 1))
+        p.setPen(QPen(QColor(style.SWATCH_EDGE), 1))
         p.drawRect(0, 0, self.width() - 1, self.height() - 1)
 
 
@@ -155,9 +155,10 @@ class _WheelResetBtn(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(0, 0, 0, 150))
+        _bg = QColor(schemes.current_scheme().surface); _bg.setAlpha(200)
+        p.setBrush(_bg)
         p.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), 3, 3)
-        p.setPen(QColor(255, 255, 255) if self._hover else QColor(0xA0, 0xA0, 0xA0))
+        p.setPen(QColor(style.TEXT if self._hover else style.DIM))
         p.setFont(style.font("small"))
         p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "↺")
 
