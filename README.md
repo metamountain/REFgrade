@@ -47,7 +47,7 @@ Exported `.cube` files go to the folder you choose in the file dialog.
 
 ## Installation — standalone
 
-1. Download the release ZIP (`refgrade-<version>.zip`) from the GitHub Releases page and extract it.
+1. Download [refgrade-0.4.0.zip](https://github.com/metamountain/REFgrade/raw/main/releases/refgrade-0.4.0.zip) and extract it.
 2. Double-click `refgrade.bat`.
 
 On the first start `refgrade.bat` downloads `uv`, installs Python 3.12 and PyQt6 (plus numpy and
@@ -71,7 +71,7 @@ installing a runtime.
 
 ## Installation — Krita plugin
 
-1. Download the plugin ZIP from the GitHub Releases page. Do not unzip it.
+1. Download [ref_grade_plugin.zip](https://github.com/metamountain/REFgrade/raw/main/releases/ref_grade_plugin.zip). Do not unzip it.
 2. In Krita: **Tools → Scripts → Import Python Plugin from File…** and choose the ZIP.
 3. Confirm the activation question, then restart Krita.
 4. Open REFgrade from **Filter → RefGrade** with a paint layer active.
