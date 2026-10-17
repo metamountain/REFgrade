@@ -1,8 +1,12 @@
-"""Final CR test: fresh worker, red barn -> blue."""
-import subprocess, sys, time, urllib.request, json, socket
+"""Final CR test: fresh worker, red barn -> blue. Usage: cr_final_test.py <image>"""
+import subprocess, sys, time, urllib.request, json, socket, tempfile
 import numpy as np
 from pathlib import Path
 from PIL import Image
+
+if len(sys.argv) < 2:
+    print("usage: cr_final_test.py <source-image>")
+    sys.exit(2)
 
 CORE = Path(__file__).resolve().parent
 sys.path.insert(0, str(CORE))
@@ -11,7 +15,7 @@ with socket.socket() as s:
     s.bind(("127.0.0.1", 0))
     port = s.getsockname()[1]
 
-tmp = Path(f"C:/Users/blasa/AppData/Local/Temp/cr_final_{port}")
+tmp = Path(tempfile.gettempdir()) / f"cr_final_{port}"
 tmp.mkdir(exist_ok=True)
 proc = subprocess.Popen(
     [sys.executable, "-E", "-m", "worker", "--port", str(port), "--tmp", str(tmp)],
@@ -37,7 +41,7 @@ def call(path, payload):
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read())
 
-src = "C:/Users/blasa/.qwen/tmp/clipboard/clipboard-1791986742762-0.jpg"
+src = sys.argv[1]
 a = np.asarray(Image.open(src).convert("RGB"), dtype=np.uint8)
 h, w = a.shape[:2]
 raw = tmp / "src.raw"

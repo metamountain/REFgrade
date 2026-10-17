@@ -21,8 +21,8 @@ from ref_grade import config  # noqa: E402
 class ConfigTest(unittest.TestCase):
 
     def test_root(self):
-        """ROOT = D:\\Coding\\Krita\\RefGrade (samefile)."""
-        expected = Path("D:\\Coding\\Krita\\RefGrade")
+        """ROOT = repository root (samefile)."""
+        expected = Path(__file__).resolve().parents[2]
         self.assertTrue(config.ROOT.samefile(expected))
 
     def test_core(self):

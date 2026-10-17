@@ -37,3 +37,5 @@ __pycache__/
 
 # Scratch files of build agents (QWEN.md rule)
 /tmp/
+# Agent-Internartefakte
+plugin/ref_grade/.claude/
