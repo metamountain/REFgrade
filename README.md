@@ -102,6 +102,10 @@ In Krita: load references into the slots, choose a method (Reinhard / MKL / Zona
 press **SAVE** to apply the grading as a new layer above the active one. **SOLO** (in a section
 header) isolates that section; **CANCEL** closes without applying.
 
+## See it live
+
+<a href="docs/color_replace.gif"><img src="docs/color_replace.gif" width="100%" alt="Live COLOR REPLACE: the red barn turns green as the intensity ramps up and back"></a>
+
 ## System requirements
 
 - Windows (tested on Windows 11). Krita 6.0.4 (Qt6) for the plugin; the standalone app needs no Krita.
