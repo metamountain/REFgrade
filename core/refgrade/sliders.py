@@ -30,7 +30,8 @@ def _lgg() -> list[Slider]:
                           core=(c == "m")))
     out.append(Slider("wheel_gain", "lgg", 0.0, 0.5, 0.0, 0.01))        # 2026-10-18: Kerngröße der Zonen (weisser Bereich); 2026-10-18: Default 0 (Punkt-Kern)
     out.append(Slider("wheel_falloff", "lgg", 0.0, 1.0, 0.5, 0.01))     # 2026-10-18: Blur-Breite (Glow) um die Kerne; 2026-10-18: Max 1.0 (0→1 schwarz→weiß), Default 0.5
-    out.append(Slider("wheel_intensity", "lgg", 0.0, 2.0, 1.0, 0.01))  # Reichweite der Räder
+    # 2026-10-18: wheel_intensity entfernt (doppelt mit Amount) — der 2×-Boost lebt jetzt im
+    # Section-Amount (amount_wheels 0..2, chain_step extrapoliert bei w > 1).
     return out
 
 

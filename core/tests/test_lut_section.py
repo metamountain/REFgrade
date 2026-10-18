@@ -61,7 +61,7 @@ class TestSectionsTableLut(unittest.TestCase):
         self.assertEqual(SECTIONS["lut"], ())
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 139)
+        self.assertEqual(len(VISIBLE), 138)   # 2026-10-18: wheel_intensity entfernt
 
     def test_fittable_count(self):
         self.assertEqual(len(FITTABLE), 23)

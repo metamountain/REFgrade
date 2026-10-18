@@ -53,7 +53,6 @@ class TestGradeIndividualSlider(unittest.TestCase):
         "highlight_hue": {"highlight_amount": 0.5},
         "wheel_gain": {"gain_r": 1.5},
         "wheel_falloff": {"gain_r": 1.5},
-        "wheel_intensity": {"gain_r": 1.5},   # scales the wheel tint: no tint, no effect
     }
     # cr_*-Regler brauchen intensity > 0, um etwas zu tun
     for _i in range(8):

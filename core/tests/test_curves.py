@@ -21,7 +21,11 @@ from refgrade.session import (
     values_with_defaults,
 )
 from refgrade.sliders import SLIDERS
-from slow import slow  # noqa: E402
+
+try:
+    from slow import slow  # noqa: E402
+except ModuleNotFoundError:   # als tests.test_curves geladen (tests/ nicht auf sys.path)
+    from tests.slow import slow  # noqa: E402
 
 _CORE_DIR = Path(__file__).resolve().parents[1]
 _POOL = _CORE_DIR.parent / "bench" / "pool"
@@ -193,7 +197,7 @@ class TestSectionsK9a(unittest.TestCase):
     """Sections: VISIBLE=47, FITTABLE=22, hsl-Namen."""
 
     def test_visible_count(self):
-        self.assertEqual(len(VISIBLE), 139)
+        self.assertEqual(len(VISIBLE), 138)   # 2026-10-18: wheel_intensity entfernt
 
     def test_fittable_count(self):
         self.assertEqual(len(FITTABLE), 23)

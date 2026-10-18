@@ -22,8 +22,14 @@ class TestWheelsGainFalloff(k9b.K9bTestBase):
 
     def test_rows_exist_in_wheels(self):
         self.assertEqual(self._row("wheel_gain").default, 0.0)        # 2026-10-18: Kerngröße, Default 0
-        self.assertEqual(self._row("wheel_intensity").default, 1.0)
         self.assertEqual(self._row("wheel_falloff").default, 0.5)     # 2026-10-18: Blur-Breite, Default 0.5
+
+    def test_no_intensity_slider(self):
+        """2026-10-18: wheel_intensity entfernt (doppelt mit Amount, das bis 200 % geht)."""
+        names = [r.name for r in self.dialog.sections["wheels"][1]]
+        self.assertNotIn("wheel_intensity", names)
+        # Amount reicht jetzt bis 200 % (2.0): slider-Schritte = (2.0-0.0)/0.01
+        self.assertEqual(self._row("amount_wheels").slider.maximum(), 200)
 
     def test_gain_in_preview(self):
         self._wheels_on()

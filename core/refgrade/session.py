@@ -544,12 +544,13 @@ def build_lut(s: Session, refs: list[str], method: str, values: dict,
     if mix is None:
         mix = {"weights": {k: 1.0 for k in SECTIONS}, "master": 1.0, "solo": None}
     else:
-        # Validierung: unbekannte Schlüssel und Werte außerhalb 0..1
+        # Validierung: unbekannte Schlüssel und Werte außerhalb 0..2
+        # (2026-10-18: bis 2.0 — chain_step extrapoliert bei w > 1, z. B. Wheels-Amount 200 %)
         for key in mix.get("weights", {}):
             if key not in SECTIONS:
                 raise KeyError(f"Unbekannter Bereich: {key!r}")
-            if not (0.0 <= mix["weights"][key] <= 1.0):
-                raise KeyError(f"Gewicht für {key!r} außerhalb 0..1")
+            if not (0.0 <= mix["weights"][key] <= 2.0):
+                raise KeyError(f"Gewicht für {key!r} außerhalb 0..2")
         if mix.get("solo") is not None and mix["solo"] not in SECTIONS:
             raise KeyError(f"Unbekannter SOLO-Bereich: {mix['solo']!r}")
         if not (0.0 <= mix.get("master", 1.0) <= 1.0):

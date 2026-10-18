@@ -106,7 +106,6 @@ def _lgg(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.Tensor
     d = _defaults()
     gain = vals.get("wheel_gain", d["wheel_gain"])
     falloff = vals.get("wheel_falloff", d["wheel_falloff"])
-    k = vals.get("wheel_intensity", d["wheel_intensity"])
 
     def _zones(img: torch.Tensor):
         Y = luma(img).squeeze(-1)
@@ -127,10 +126,11 @@ def _lgg(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.Tensor
     S, M, H = _zones(out)
     out = out.clone()
     for i, c in enumerate(("r", "g", "b")):
-        # Intensity skaliert nur die Farbanteile der Räder (um neutral 0 bzw. 1)
-        lift_c = k * vals.get(f"lift_{c}", d[f"lift_{c}"])
-        gamma_c = torch.as_tensor(vals.get(f"gamma_{c}", d[f"gamma_{c}"])).clamp_min(_EPS) ** k
-        gain_c = torch.as_tensor(vals.get(f"gain_{c}", d[f"gain_{c}"])).clamp_min(_EPS) ** k
+        # 2026-10-18: wheel_intensity entfernt (doppelt mit Amount) — der 2×-Boost kommt aus
+        # dem Section-Amount (amount_wheels bis 2.0; chain_step extrapoliert bei w > 1).
+        lift_c = vals.get(f"lift_{c}", d[f"lift_{c}"])
+        gamma_c = torch.as_tensor(vals.get(f"gamma_{c}", d[f"gamma_{c}"])).clamp_min(_EPS)
+        gain_c = torch.as_tensor(vals.get(f"gain_{c}", d[f"gain_{c}"])).clamp_min(_EPS)
         out[..., i] = _apply(out[..., i], lift_c, gamma_c, gain_c, S, M, H)
     return out
 

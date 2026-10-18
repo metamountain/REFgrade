@@ -49,7 +49,6 @@ COMBO: dict[str, dict[str, float]] = {
     "highlight_hue": {"highlight_amount": 0.5},
     "wheel_gain": {"gain_r": 1.5},
     "wheel_falloff": {"gain_r": 1.5},
-    "wheel_intensity": {"gain_r": 1.5},
 }
 
 # ── HTTP-Helfer ──────────────────────────────────────────────────────────────
@@ -474,12 +473,10 @@ def test_wheels(state: StressState) -> None:
     # Beide Bilder in den Bogen + Zahl in den Bericht
     vals_b1 = dict(defaults)
     vals_b1.update(wheel_base)
-    vals_b1["wheel_intensity"] = 1.0
     vals_b1["wheel_gain"] = 0.5
     vals_b1["wheel_falloff"] = 1.0
     vals_no_blend = dict(defaults)
     vals_no_blend.update(wheel_base)
-    vals_no_blend["wheel_intensity"] = 1.0
     # wheel_gain/falloff NICHT setzen → Standardwert aus defaults
     resp_b1, ms_b1 = _preview(state, sid, ref, "reinhard", vals_b1)
     resp_nb, ms_nb = _preview(state, sid, ref, "reinhard", vals_no_blend)
@@ -492,24 +489,22 @@ def test_wheels(state: StressState) -> None:
         state.preview_images.append(("wheels:full", resp_b1["image"]))
         state.preview_images.append(("wheels:noB", resp_nb["image"]))
 
-    for intensity in (0, 1, 2):
-        for gain in (0.0, 0.1, 0.5):
-            for falloff in (0.0, 0.1, 0.5, 1.0):
-                vals = dict(defaults)
-                vals.update(wheel_base)
-                vals["wheel_intensity"] = float(intensity)
-                vals["wheel_gain"] = gain
-                vals["wheel_falloff"] = falloff
-                label = f"wheels:I={intensity} G={gain} F={falloff}"
-                resp, ms = _preview(state, sid, ref, "reinhard", vals)
-                if "error" in resp:
-                    state.check(label, False, resp["error"], ms)
-                    continue
-                stats = _img_stats(resp["image"])
-                finite = stats["n_nan"] == 0 and stats["min"] >= 0.0 and stats["max"] <= 1.0
-                state.check(label, finite, f"min={stats['min']:.3f} max={stats['max']:.3f}", ms)
-                if finite:
-                    state.preview_images.append((label, resp["image"]))
+    for gain in (0.0, 0.1, 0.5):
+        for falloff in (0.0, 0.1, 0.5, 1.0):
+            vals = dict(defaults)
+            vals.update(wheel_base)
+            vals["wheel_gain"] = gain
+            vals["wheel_falloff"] = falloff
+            label = f"wheels:G={gain} F={falloff}"
+            resp, ms = _preview(state, sid, ref, "reinhard", vals)
+            if "error" in resp:
+                state.check(label, False, resp["error"], ms)
+                continue
+            stats = _img_stats(resp["image"])
+            finite = stats["n_nan"] == 0 and stats["min"] >= 0.0 and stats["max"] <= 1.0
+            state.check(label, finite, f"min={stats['min']:.3f} max={stats['max']:.3f}", ms)
+            if finite:
+                state.preview_images.append((label, resp["image"]))
 
 
 def test_stages(state: StressState) -> None:

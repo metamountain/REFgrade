@@ -119,15 +119,15 @@ class TestSectionsTable(unittest.TestCase):
         missing = dialog_names - set(VISIBLE)
         self.assertEqual(missing, set(), f"Dialog-Namen nicht in VISIBLE: {missing}")
         # VISIBLE = Dialog + hsl + vibrance + wheel_* + color_replace (curves/lut haben keine Regler)
-        new_names = set(SECTIONS["hsl"]) | set(SECTIONS["color_replace"]) | {"vibrance", "wheel_gain", "wheel_falloff", "wheel_intensity"}
+        new_names = set(SECTIONS["hsl"]) | set(SECTIONS["color_replace"]) | {"vibrance", "wheel_gain", "wheel_falloff"}
         expected = dialog_names | new_names
         self.assertEqual(set(VISIBLE), expected,
                          f"SECTIONS ≠ dialog+neu: nur SECTIONS={set(VISIBLE) - expected}, "
                          f"nur dialog+neu={expected - set(VISIBLE)}")
 
     def test_visible_count(self):
-        """VISIBLE hat genau 139 Einträge."""
-        self.assertEqual(len(VISIBLE), 139)
+        """VISIBLE hat genau 138 Einträge (2026-10-18: wheel_intensity entfernt)."""
+        self.assertEqual(len(VISIBLE), 138)   # 2026-10-18: wheel_intensity entfernt
 
     def test_fittable_count(self):
         """FITTABLE hat genau 23 Einträge (tone + color + wheels, ohne clarity)."""

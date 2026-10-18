@@ -158,17 +158,8 @@ HELP: dict[str, dict[str, str]] = {
                "highlights, blue shadows) must not muddy the midtones.",
         "what": "How soft the edge of each wheel zone is. Right blurs the zone into the neighbouring tones like a glow, up to the full black-to-white range; left keeps a hard edge.",
     },
-    "wheel_intensity": {
-        "short": "Strength of all three colour wheels",
-        "en": "Reach of all three colour wheels. Scales only their colour, not their brightness "
-              "(H/M/L master): lift·k, gamma^k, gain^k. At the wheel's rim and k = 1 that is lift "
-              "±0.15, gamma ×0.71…1.41, gain ×0.76…1.32; k = 2 doubles the lift and squares the "
-              "factors, which quickly pushes saturated tones into an unnatural, neon look.",
-        "tip": "1 = normal. Raise it when a wheel at the rim is still too weak; lower it for fine "
-               "work near the centre. Beyond ~1.5 bright tones clip quickly and the tint can turn "
-               "neon/oversaturated — if it looks artificial, drop it back toward 1.",
-        "what": "Scales the strength of all three color wheels together. Right makes the wheel colors stronger, left weaker, without changing the brightness wheels. 1 is normal; raise it when a wheel at the rim is still too weak. Past about 1.5 the colors can look oversaturated and neon — if that happens, lower it back toward 1.",
-    },
+    # 2026-10-18: wheel_intensity entfernt (doppelt mit dem Section-Amount, das jetzt bis 200 %
+    # geht und den 2×-Boost übernimmt).
     # ── SLIDERS: contrast ──────────────────────────────────────────────────
     "contrast": {
         "short": "Difference between light and dark",

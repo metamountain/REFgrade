@@ -27,7 +27,7 @@ LABELS = {"light_strength": "Light", "color_strength": "Color", "protect_shadows
           "temperature": "Temperature", "tint": "Tint",
           "saturation": "Saturation", "vibrance": "Vibrance",
           "wheel_gain": "Gain", "wheel_falloff": "Falloff",
-          "wheel_intensity": "Intensity",
+          # 2026-10-18: wheel_intensity entfernt (doppelt mit Amount, das jetzt bis 200 % geht)
           "rgb_m_gamma": "M Gamma", "rgb_m_pedestal": "M Offset", "rgb_m_gain": "M Gain",
           "rgb_r_gamma": "R Gamma", "rgb_r_pedestal": "R Offset", "rgb_r_gain": "R Gain",
           "rgb_g_gamma": "G Gamma", "rgb_g_pedestal": "G Offset", "rgb_g_gain": "G Gain",

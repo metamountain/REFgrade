@@ -96,8 +96,7 @@ def ref_autolevels(x: torch.Tensor) -> torch.Tensor:
 def oracle(x: torch.Tensor, y: torch.Tensor, sec: str) -> torch.Tensor:
     from refgrade.fit_sliders import fit_sliders
     names = [n for n in SECTIONS[sec] if n not in ("clarity", "texture", "dehaze",
-                                                   "wheel_gain", "wheel_falloff",
-                                                   "wheel_intensity")]
+                                                   "wheel_gain", "wheel_falloff")]
     vals, _ = fit_sliders(x, y, names=names)
     return section_fn(sec, {**DEFAULTS, **vals})(x)
 

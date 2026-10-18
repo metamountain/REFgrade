@@ -280,18 +280,16 @@ class SectionsMixin:
         cbox = QVBoxLayout(content)
         cbox.setContentsMargins(0, 0, 0, 0)
         cbox.setSpacing(1)
-        self._wheel_amount = SliderRow("amount_wheels", 0.0, 1.0, 1.0, 0.01, "Amount")
+        # 2026-10-18 (user): wheel_intensity entfernt (doppelt) — Amount geht jetzt bis 200 %
+        # und übernimmt den 2×-Boost (chain_step extrapoliert bei w > 1).
+        self._wheel_amount = SliderRow("amount_wheels", 0.0, 2.0, 1.0, 0.01, "Amount")
         self._wheel_amount.setObjectName("amount_wheels")
         cbox.addWidget(self._wheel_amount)
         self._wheel_header.set_amount_slider(self._wheel_amount)
         cbox.addWidget(_separator())
-        # 2026-10-18 (user): Gain sizes the white zone cores, Falloff the blur (glow) —
-        # together they close the gaps between the zones (default: big gaps).
+        # 2026-10-18 (user): Gain sizes the white zone cores, Falloff the blur (glow).
         self._wheel_gain_slider = SliderRow("wheel_gain", 0.0, 0.5, 0.0, 0.01, "Gain")
         self._wheel_falloff_slider = SliderRow("wheel_falloff", 0.0, 1.0, 0.5, 0.01, "Falloff")
-        self._wheel_intensity_slider = SliderRow("wheel_intensity", 0.0, 2.0, 1.0, 0.01, "Intensity")
-        self._wheel_intensity_slider.setObjectName("wheel_intensity")
-        cbox.addWidget(self._wheel_intensity_slider)
         cbox.addWidget(self._wheel_gain_slider)
         cbox.addWidget(self._wheel_falloff_slider)
         # 2026-10-18 (user): B/W zone map under the wheels — shows both Gain (core size)

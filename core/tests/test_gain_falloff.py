@@ -173,8 +173,8 @@ class TestSections(unittest.TestCase):
 
     def test_visible_count(self):
         # 62 (vor K28d) + 2 (texture, dehaze) + 1 (highlight_rolloff, K39a) + 1 (highlight_reconstruct, K39b)
-        # + 8 (cr_{i}_sat_floor, 2026-10-18)
-        self.assertEqual(len(VISIBLE), 139)
+        # + 8 (cr_{i}_sat_floor, 2026-10-18) − 1 (wheel_intensity entfernt, 2026-10-18)
+        self.assertEqual(len(VISIBLE), 138)
         self.assertIn("wheel_gain", VISIBLE)
         self.assertIn("wheel_falloff", VISIBLE)
 
