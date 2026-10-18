@@ -33,8 +33,8 @@ class ZoneVisualizer(QWidget):
     softly over the whole scale; lowering Gain/Falloff opens black gaps between them.
     """
 
-    BAR_H = 3   # 2026-10-18 (user): schlanke Linien, keine grauen Streifen dazwischen
-    GAP = 0
+    BAR_H = 3   # 2026-10-18 (user): schlanke Linien
+    GAP = 3     # 2026-10-18 (user): 3 px Abstand zwischen den Bands
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
