@@ -13,8 +13,6 @@ from __future__ import annotations
 from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import QWidget
 
-from . import schemes
-
 
 def _ss(e0: float, e1: float, x: float) -> float:
     """Smoothstep: 0 below e0, 1 above e1, cubic in between — exactly like the core."""
@@ -74,7 +72,7 @@ class ZoneVisualizer(QWidget):
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
         w = self.width()
-        p.fillRect(self.rect(), QColor(schemes.role_color("surface")))
+        p.fillRect(self.rect(), QColor(0, 0, 0))  # 2026-10-18 (user): Abstände schwarz, nicht grau
         if w >= 2:
             # Precompute the per-column masks once (g/f are constant across the bars).
             cols = [self._masks(x / (w - 1)) for x in range(w)]
