@@ -19,8 +19,10 @@ _ANCHOR_IDX = 4
 _LIGHT_STEPS = {
     "exposure": 0.5,       # ½ Blende
     "contrast": 0.3,
-    "lift_m": 0.15,
-    "lift_r": 0.15,
+    # 2026-10-18: Lift wirkt jetzt nur noch in der Schattenzone (Bump-Modell, grosse
+    # Lücken) → volle Schrittweite, damit die Kandidaten sichtbar bleiben.
+    "lift_m": 0.5,
+    "lift_r": 0.5,
 }
 _COLOR_STEPS = {
     "temperature": 0.2,

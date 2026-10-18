@@ -68,6 +68,31 @@ def _smoothstep(edge0: float, edge1: float, x: torch.Tensor) -> torch.Tensor:
     return t * t * (3.0 - 2.0 * t)
 
 
+def _zone_masks(Y: torch.Tensor, gain: float, falloff: float) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Drei Zonenmasken als weiche Bumps (Glow) auf der Luminanzachse 0…1.
+
+    2026-10-18 (Nutzer): ersetzt das alte Split-Modell (p/w/o). Jede Zone ist ein kleiner
+    WEISSER BEREICH (Kern) an ihrem Zentrum — Schatten bei Y=0, Mitten bei Y=0,5, Lichter
+    bei Y=1 — mit weichem Falloff (Glow/Blur) darum. Gain macht den Kern größer, Falloff
+    den Rand weicher. Im Standard (0,1/0,1) gibt es grosse Lücken zwischen den Zonen, in
+    denen kein Rad wirkt; Gain und/oder Falloff schließen sie, bis sich die Zonen berühren.
+    """
+    g = torch.as_tensor(gain, dtype=Y.dtype, device=Y.device)
+    f = torch.as_tensor(falloff, dtype=Y.dtype, device=Y.device)
+    f_val = f.detach().item()   # nur für die Zweig-Entscheidung; die Formel läuft mit Tensor (Autograd!)
+
+    def _bump(dist: torch.Tensor) -> torch.Tensor:
+        # dist = Abstand vom Kernrand (0 im Kern). f == 0 → harte Kante.
+        if f_val <= 0.0:
+            return (dist <= 0.0).to(Y.dtype)
+        return 1.0 - _smoothstep(0.0, f, dist.clamp_min(0.0).clamp_max(f))
+
+    S = _bump(Y - g)                    # Kern [0, g], Falloff bis g+f
+    H = _bump((1.0 - g) - Y)            # Kern [1-g, 1], Falloff bis 1-g-f
+    M = _bump(torch.abs(Y - 0.5) - g)   # Kern [0.5-g, 0.5+g], beide Seiten
+    return S, M, H
+
+
 def _lgg(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.Tensor:
     """Lift/Gamma/Gain in zwei Schritten: erst Helligkeit (Regler unter den Rädern), dann Farbe.
 
@@ -77,31 +102,13 @@ def _lgg(x: torch.Tensor, vals: dict[str, float | torch.Tensor]) -> torch.Tensor
     Highlights-Regler abdunkelt, rutscht so in die Mitten und bekommt die Mittenfarbe.
     """
     d = _defaults()
-    blend = vals.get("wheel_blending", d["wheel_blending"])
-    balance = vals.get("wheel_balance", d["wheel_balance"])
+    gain = vals.get("wheel_gain", d["wheel_gain"])
+    falloff = vals.get("wheel_falloff", d["wheel_falloff"])
     k = vals.get("wheel_intensity", d["wheel_intensity"])
-
-    # Drei Zonen aus der Luminanz (Rec.709), wie Lightroom/Resolve (2026-10-12): Schatten blenden
-    # unterhalb der Mitte aus, Lichter oberhalb ein — dazwischen bleiben Lift und Gain wirkungslos.
-    # Vorher war S = 1 − H, jedes Pixel also halb Schatten, halb Lichter: Gelb in den Lichtern und
-    # Blau in den Schatten färbten immer auch die Mitten. Blending 0…0,5 = Übergangsbreite ±0,04
-    # (reine Zonen) bis ±0,20; 0,5…1 = zusätzlich Überlappung bis zum klassischen LGG bei 1.
-    # Balance verschiebt beide Kanten gemeinsam.
-    p = 0.5 - 0.35 * balance
-    b_lo = torch.as_tensor(blend).clamp(0.0, 0.5) * 2.0          # 0…1 über blend 0…0,5
-    w = 0.04 + 0.16 * b_lo
-    o = (torch.as_tensor(blend) - 0.5).clamp(0.0, 0.5) * 2.0     # Überlappung über blend 0,5…1
-
-    def _ss(e0, e1, v):
-        u = ((v - e0) / (e1 - e0)).clamp(0.0, 1.0)
-        return u * u * (3.0 - 2.0 * u)
 
     def _zones(img: torch.Tensor):
         Y = luma(img).squeeze(-1)
-        S = 1.0 - _ss(p - 0.15 - w, p - 0.15 + w, Y)
-        H = _ss(p + 0.15 - w, p + 0.15 + w, Y)
-        M = (1.0 - S - H).clamp(0.0, 1.0)
-        return o + (1.0 - o) * S, o + (1.0 - o) * M, o + (1.0 - o) * H
+        return _zone_masks(Y, gain, falloff)
 
     def _apply(ch, lift, gamma, gain, S, M, H):
         ch = (1.0 + (gain - 1.0) * H) * (ch + lift * (1.0 - ch) * S)

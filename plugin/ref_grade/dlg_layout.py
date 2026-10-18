@@ -367,8 +367,8 @@ class LayoutMixin:
             '<span style="font-weight:300;">grade</span>'
         )
         self._wm_brand.setTextFormat(Qt.TextFormat.RichText)
-        self._wm_brand.setFont(style.font("title"))
-        self._wm_brand.setProperty("font_role", "title")
+        self._wm_brand.setFont(style.font("wordmark"))
+        self._wm_brand.setProperty("font_role", "wordmark")
         self._wm_brand.setProperty("wordmark", "ref")
         lay.addWidget(self._wm_brand)
         self._wm_sep = QFrame()
@@ -493,11 +493,7 @@ class LayoutMixin:
         for _band_rows in self._hsl_sliders.values():
             _apply_label_width(_band_rows)
         self._layout_not_in_lut()   # after the pass above, which squeezed '(no LUT!)'
-        # master row (label is "small" role, like the wordmark version)
-        if hasattr(self, "master"):
-            fm = QFontMetrics(style.font("small"))
-            pad = scale.row_h(style.current_s()) // 2
-            self.master.set_label_width(fm.horizontalAdvance("MASTER") + pad)
+        # master row has no label (wordmark block already says MASTER)
 
 
     def show_screen(self) -> None:

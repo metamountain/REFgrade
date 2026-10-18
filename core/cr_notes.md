@@ -28,10 +28,12 @@ t = hue_dist / range
 plateau = 0.6
 mask = 1.0                          wenn t < plateau
 mask = (1 - t) / (1 - plateau)      sonst
-mask *= sat_guard * src_sat * intensity
+mask *= sat_guard * bright_mod * intensity   (2026-10-18: src_sat raus, s. u.)
 ```
 
-- `src_sat=0` (Center/Schwarz) → **kein Effekt** (PITFALL: ohne src_sat in Maske werden Pixel trotzdem verändert)
+- `src_sat` skaliert die Maske **nicht** (2026-10-18, war ein Bug: dunkle/helle Quellen
+  wie schwarzes Flugzeug oder Weiß, S≈0, wurden kaum/nicht getroffen). Grauschutz macht
+  der `sat_floor`-Guard (Min sat): Default 0.15 schützt Grau/Weiß, 0.0 = Weiß/Grau treiben.
 - `intensity=0` → Instanz inaktiv (Core-Default, verhindert dass leere Instanzen 1–7 stören)
 
 ### UI-Layout

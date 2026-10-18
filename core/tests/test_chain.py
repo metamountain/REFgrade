@@ -71,7 +71,7 @@ class TestWheelsSeeToneBrightness(unittest.TestCase):
     def _vals(self) -> dict:
         v = dict(_D)
         v["exposure"] = -1.0            # 0,85 → ~0,6 sRGB: aus den Lichtern in die Mitten
-        v["wheel_blending"], v["wheel_balance"] = 0.0, 0.0
+        v["wheel_gain"], v["wheel_falloff"] = 0.1, 0.1
         v["gain_b"] = 1.4               # Lichter blau
         v["gamma_r"] = 1.4              # Mitten rot
         return v

@@ -23,6 +23,8 @@ def role_px(role: str, s: float) -> int:
         return max(9, round(b * 0.85))
     if role == "title":
         return round(b * 1.1)
+    if role == "wordmark":
+        return round(b * 1.1) + 1   # K41c: Brand 'REFgrade' 1px größer (Nutzer 2026-10-18)
     if role == "big":
         return round(b * 2)
     return b  # "base"

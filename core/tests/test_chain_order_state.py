@@ -14,6 +14,7 @@ import sys
 import time
 import types
 import unittest
+from slow import slow  # noqa: E402
 from pathlib import Path
 from typing import Callable
 
@@ -128,6 +129,7 @@ class TestChainOrderSetAndPersist(_Base):
     """(b) set_chain_order (wheels before tone) → next payload has that order;
     a newly opened dialog loads it from QSettings."""
 
+    @slow
     def test_set_and_reload(self):
         # Custom order: wheels before tone
         custom = ["reference", "color", "wheels", "tone", "rgb", "curves", "hsl", "lut"]

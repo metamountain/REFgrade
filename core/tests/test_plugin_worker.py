@@ -18,6 +18,7 @@ sys.modules["ref_grade"] = _pkg
 
 from ref_grade import config  # noqa: E402
 from ref_grade import worker_process  # noqa: E402
+from slow import slow  # noqa: E402
 from ref_grade import worker_client  # noqa: E402
 
 CORE_DIR = Path(__file__).resolve().parents[1]
@@ -124,6 +125,7 @@ class KritaImportTest(unittest.TestCase):
 class DialogTest(unittest.TestCase):
     """RefGradeDialog lässt sich offscreen erzeugen."""
 
+    @slow
     def test_dialog_offscreen(self):
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
         try:

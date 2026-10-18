@@ -510,6 +510,7 @@ class TestPairColdCache(unittest.TestCase):
     """Regression 2026-10-08: PAIR read s.refs without loading, so a session whose
     references were not preloaded by /references failed with KeyError."""
 
+    @slow
     def test_apply_full_loads_pair_images_itself(self):
         from refgrade import session as S
         pair = Path(__file__).resolve().parents[2] / "Dual LUT"

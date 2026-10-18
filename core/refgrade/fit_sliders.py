@@ -32,10 +32,10 @@ _AT_TARGET = 1e-8        # Verlust darunter = schon am Ziel (Selbst-Abgleich lie
 
 
 def _slider_names(names: list[str] | None = None) -> list[str]:
-    """Reglernamen zum Fitten. Standard: alle außer match-Gruppe und wheel_blending/wheel_balance."""
+    """Reglernamen zum Fitten. Standard: alle außer match-Gruppe und wheel_gain/wheel_falloff."""
     if names is not None:
         return list(names)
-    exclude = {"wheel_blending", "wheel_balance", "wheel_intensity"}
+    exclude = {"wheel_gain", "wheel_falloff", "wheel_intensity"}
     return [s.name for s in SLIDERS if s.group != "match" and s.name not in exclude]
 
 

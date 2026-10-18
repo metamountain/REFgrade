@@ -9,6 +9,7 @@ import types
 import unittest
 from pathlib import Path
 from typing import Callable
+from slow import slow  # noqa: E402
 
 _PLUGIN_DIR = Path(__file__).resolve().parents[2] / "plugin" / "ref_grade"
 _pkg = types.ModuleType("ref_grade")
@@ -64,6 +65,7 @@ class TestTooltipsEverywhere(unittest.TestCase):
         self.dlg.deleteLater()
         self.app.processEvents()
 
+    @slow
     def test_all_buttons_have_tooltips(self):
         """Every visible QAbstractButton has toolTip().strip() >= 12 chars and != text()."""
         missing = []

@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 from typing import Callable
 from urllib.request import urlopen, Request
+from slow import slow  # noqa: E402
 
 CORE_DIR = Path(__file__).resolve().parent.parent
 PROJECT_DIR = CORE_DIR.parent
@@ -135,6 +136,7 @@ class TestDragHalfResolution(unittest.TestCase):
             elif time.monotonic() - last_t > 0.1:
                 break
 
+    @slow
     def test_drag_half_resolution(self):
         """During drag: max_side is half; after release: full."""
         full_side = self.dlg._max_side()

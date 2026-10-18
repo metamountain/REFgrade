@@ -19,7 +19,7 @@ _SECTIONS: dict[str, tuple[str, ...]] = {
              "shadows", "whites", "blacks", "clarity", "texture", "dehaze"),
     "color": ("temperature", "tint", "saturation", "vibrance"),
     "wheels": tuple(f"{k}_{c}" for k in ("lift", "gamma", "gain") for c in ("m", "r", "g", "b"))
-             + ("wheel_blending", "wheel_balance", "wheel_intensity"),
+             + ("wheel_gain", "wheel_falloff", "wheel_intensity"),
     "rgb": tuple(f"rgb_{p}_{k}" for p in ("m", "r", "g", "b") for k in ("gamma", "pedestal", "gain"))
            + tuple(f"rgb_use_{z}" for z in ("shadows", "midtones", "highlights")),
     "hsl": tuple(f"sel_{b}_{p}" for b in ("red", "yellow", "green", "cyan", "blue", "magenta")
@@ -42,7 +42,7 @@ _LABELS: dict[str, str] = {
     "clarity": "Clarity", "texture": "Texture", "dehaze": "Dehaze",
     "temperature": "Temperature", "tint": "Tint",
     "saturation": "Saturation", "vibrance": "Vibrance",
-    "wheel_blending": "Blending", "wheel_balance": "Balance",
+    "wheel_gain": "Gain", "wheel_falloff": "Falloff",
     "wheel_intensity": "Intensity",
     "lift_m": "M Lift", "lift_r": "R Lift", "lift_g": "G Lift", "lift_b": "B Lift",
     "gamma_m": "M Gamma", "gamma_r": "R Gamma", "gamma_g": "G Gamma", "gamma_b": "B Gamma",

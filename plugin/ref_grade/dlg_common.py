@@ -26,7 +26,7 @@ LABELS = {"light_strength": "Light", "color_strength": "Color", "protect_shadows
           "clarity": "Clarity", "texture": "Texture", "dehaze": "Dehaze",
           "temperature": "Temperature", "tint": "Tint",
           "saturation": "Saturation", "vibrance": "Vibrance",
-          "wheel_blending": "Blending", "wheel_balance": "Balance",
+          "wheel_gain": "Gain", "wheel_falloff": "Falloff",
           "wheel_intensity": "Intensity",
           "rgb_m_gamma": "M Gamma", "rgb_m_pedestal": "M Offset", "rgb_m_gain": "M Gain",
           "rgb_r_gamma": "R Gamma", "rgb_r_pedestal": "R Offset", "rgb_r_gain": "R Gain",

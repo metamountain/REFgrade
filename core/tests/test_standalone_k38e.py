@@ -16,11 +16,13 @@ _pkg.__path__ = [str(_PLUGIN_DIR)]
 sys.modules["ref_grade"] = _pkg
 
 from ref_grade import runtime  # noqa: E402
+from slow import slow  # noqa: E402
 
 
 class TestRuntimeCliDetect(unittest.TestCase):
     """`python -m ref_grade.runtime --detect` (subprocess, cwd plugin)."""
 
+    @slow
     def test_detect_json(self):
         r = subprocess.run(
             [sys.executable, "-m", "ref_grade.runtime", "--detect"],

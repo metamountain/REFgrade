@@ -44,19 +44,20 @@ class TestGradeIndividualSlider(unittest.TestCase):
     """Jeder Regler vom Standard weg → Bild ändert sich."""
 
     # Regler, die nicht von grade() verwendet werden
-    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze", "highlight_reconstruct"}
+    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze", "highlight_reconstruct"} \
+        | {f"cr_{i}_src_sat" for i in range(8)}   # 2026-10-18: src_sat skaliert die Maske nicht mehr (reine Quellfarb-Beschreibung)
     # Regler, die nur in Kombination wirken: name → zusätzliche Werte
     COMBO = {
         "pivot": {"contrast": 1.5},
         "shadow_hue": {"shadow_amount": 0.5},
         "highlight_hue": {"highlight_amount": 0.5},
-        "wheel_blending": {"gain_r": 1.5},
-        "wheel_balance": {"gain_r": 1.5},
+        "wheel_gain": {"gain_r": 1.5},
+        "wheel_falloff": {"gain_r": 1.5},
         "wheel_intensity": {"gain_r": 1.5},   # scales the wheel tint: no tint, no effect
     }
     # cr_*-Regler brauchen intensity > 0, um etwas zu tun
     for _i in range(8):
-        for _k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "range", "sat_floor"):
+        for _k in ("src_hue", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "range", "sat_floor"):
             COMBO[f"cr_{_i}_{_k}"] = {f"cr_{_i}_intensity": 0.5}
 
     def _test_single_slider(self, name: str, offset: float):
@@ -95,7 +96,8 @@ class TestGradeGradient(unittest.TestCase):
     """Gradient nach jedem Regler existiert und ist endlich."""
 
     # Regler, die nicht von grade() verwendet werden
-    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze", "highlight_reconstruct"}
+    SKIP = {s.name for s in SLIDERS if s.group in ("match", "rgb")} | {"clarity", "texture", "dehaze", "highlight_reconstruct"} \
+        | {f"cr_{i}_src_sat" for i in range(8)}   # 2026-10-18: src_sat skaliert die Maske nicht mehr (kein Gradient)
 
     def test_gradients(self):
         dev = _get_device()

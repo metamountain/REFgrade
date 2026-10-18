@@ -242,28 +242,29 @@ class TestWheelsSection(unittest.TestCase):
         self.assertGreater(L1, L0, f"gamma_m=1.5: Grau 0.5 nicht heller (ΔL={L1 - L0:.2f})")
 
     def test_lift_r_up(self):
-        """lift_r +0.2 → R-Kanal steigt bei Grau."""
+        """lift_r +0.2 → R-Kanal steigt im Schatten (2026-10-18: Zonen sind Bumps,
+        der Schatten-Regler wirkt nur im Schatten-Bereich, nicht mehr bei Grau 0.5)."""
         vals = _defaults()
         vals["lift_r"] = 0.2
-        out = _grade(*GREY_50, vals)
+        out = _grade(*GREY_15, vals)
         r_out = float(out[0, 0, 0, 0])
-        self.assertGreater(r_out, 0.5, f"lift_r=+0.2: R-Kanal nicht gestiegen (R={r_out:.3f})")
+        self.assertGreater(r_out, 0.15, f"lift_r=+0.2: R-Kanal nicht gestiegen (R={r_out:.3f})")
 
     def test_lift_g_up(self):
-        """lift_g +0.2 → G-Kanal steigt bei Grau."""
+        """lift_g +0.2 → G-Kanal steigt im Schatten."""
         vals = _defaults()
         vals["lift_g"] = 0.2
-        out = _grade(*GREY_50, vals)
+        out = _grade(*GREY_15, vals)
         g_out = float(out[0, 0, 0, 1])
-        self.assertGreater(g_out, 0.5, f"lift_g=+0.2: G-Kanal nicht gestiegen (G={g_out:.3f})")
+        self.assertGreater(g_out, 0.15, f"lift_g=+0.2: G-Kanal nicht gestiegen (G={g_out:.3f})")
 
     def test_lift_b_up(self):
-        """lift_b +0.2 → B-Kanal steigt bei Grau."""
+        """lift_b +0.2 → B-Kanal steigt im Schatten."""
         vals = _defaults()
         vals["lift_b"] = 0.2
-        out = _grade(*GREY_50, vals)
+        out = _grade(*GREY_15, vals)
         b_out = float(out[0, 0, 0, 2])
-        self.assertGreater(b_out, 0.5, f"lift_b=+0.2: B-Kanal nicht gestiegen (B={b_out:.3f})")
+        self.assertGreater(b_out, 0.15, f"lift_b=+0.2: B-Kanal nicht gestiegen (B={b_out:.3f})")
 
     def test_gamma_r_up(self):
         """gamma_r 1.5 → R-Kanal von Grau 0.5 steigt (LGG: Gamma > 1 = heller)."""
@@ -281,35 +282,35 @@ class TestWheelsSection(unittest.TestCase):
         r_out = float(out[0, 0, 0, 0])
         self.assertGreater(r_out, 0.85, f"gain_r=1.5: R-Kanal nicht gestiegen (R={r_out:.3f})")
 
-    def test_wheel_blending_zero(self):
-        """wheel_blending=0, gain_r=1.5: dunkles Grau R < 0.01, helles Grau R > 0.1."""
+    def test_wheel_falloff_zero(self):
+        """falloff=0, gain=0.1: harte Zonen — Y=0.15 außerhalb, Y=0.95 im Lichterkern."""
         vals = _defaults()
-        vals["wheel_blending"] = 0.0
-        vals["wheel_balance"] = 0.0
+        vals["wheel_falloff"] = 0.0
+        vals["wheel_gain"] = 0.1
         vals["gain_r"] = 1.5
         out_dark = _grade(*GREY_15, vals)
-        out_light = _grade(*GREY_85, vals)
+        out_light = _grade(0.95, 0.95, 0.95, vals)
         dark_r = abs(float(out_dark[0, 0, 0, 0]) - 0.15)
-        light_r = abs(float(out_light[0, 0, 0, 0]) - 0.85)
-        self.assertLess(dark_r, 0.01, f"blend=0: dunkles Grau R-Änderung {dark_r} >= 0.01")
-        self.assertGreater(light_r, 0.1, f"blend=0: helles Grau R-Änderung {light_r} <= 0.1")
+        light_r = abs(float(out_light[0, 0, 0, 0]) - 0.95)
+        self.assertLess(dark_r, 0.01, f"falloff=0: dunkles Grau R-Änderung {dark_r} >= 0.01")
+        self.assertGreater(light_r, 0.1, f"falloff=0: helles Grau R-Änderung {light_r} <= 0.1")
 
-    def test_wheel_balance_shifts(self):
-        """wheel_balance +1 → mehr Wirkung in Highlights als -1."""
-        vals_pos = _defaults()
-        vals_pos["wheel_blending"] = 0.0
-        vals_pos["wheel_balance"] = 1.0
-        vals_pos["gain_r"] = 1.5
-        vals_neg = _defaults()
-        vals_neg["wheel_blending"] = 0.0
-        vals_neg["wheel_balance"] = -1.0
-        vals_neg["gain_r"] = 1.5
-        out_pos = _grade(*GREY_50, vals_pos)
-        out_neg = _grade(*GREY_50, vals_neg)
-        r_pos = abs(float(out_pos[0, 0, 0, 0]) - 0.5)
-        r_neg = abs(float(out_neg[0, 0, 0, 0]) - 0.5)
-        self.assertGreater(r_pos, r_neg,
-                           f"balance=+1 ({r_pos}) nicht > balance=-1 ({r_neg})")
+    def test_wheel_gain_grows_zone(self):
+        """wheel_gain 0.5 → Lichterzone reicht bis Y=0.5; 0.0 → nicht."""
+        vals_big = _defaults()
+        vals_big["wheel_falloff"] = 0.0
+        vals_big["wheel_gain"] = 0.5
+        vals_big["gain_r"] = 1.5
+        vals_small = _defaults()
+        vals_small["wheel_falloff"] = 0.0
+        vals_small["wheel_gain"] = 0.0
+        vals_small["gain_r"] = 1.5
+        out_big = _grade(*GREY_50, vals_big)
+        out_small = _grade(*GREY_50, vals_small)
+        r_big = abs(float(out_big[0, 0, 0, 0]) - 0.5)
+        r_small = abs(float(out_small[0, 0, 0, 0]) - 0.5)
+        self.assertGreater(r_big, 0.05, f"gain=0.5: Y=0.5 sollte in der Lichterzone sein (Δ={r_big})")
+        self.assertLess(r_small, 0.01, f"gain=0: Y=0.5 sollte nicht getroffen werden (Δ={r_small})")
 
 
 class TestHSLSection(unittest.TestCase):

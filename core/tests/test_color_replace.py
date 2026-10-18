@@ -12,6 +12,7 @@ import torch
 
 from refgrade.color_replace import apply, MAX_INSTANCES
 from refgrade.sliders import SLIDERS
+from slow import slow  # noqa: E402
 
 # ── Qt widget setup (for Bug-fix tests 1-3) ──────────────────────────────────
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -53,6 +54,7 @@ def _grey_image() -> torch.Tensor:
 
 class TestColorReplace(unittest.TestCase):
 
+    @slow
     def test_default_is_identity(self):
         """Alle Werte auf Default → Bild unverändert."""
         x = _red_image()
@@ -265,6 +267,19 @@ class TestColorReplace(unittest.TestCase):
 
         self.assertGreater(_diff(0.0), _diff(0.15),
                            "opening the guard (0.0) should affect the desaturated pixel more")
+
+    def test_low_src_sat_full_effect(self):
+        """2026-10-18: src_sat scales the mask no more — picking a desaturated source
+        (e.g. a black aircraft, S≈0.32) replaces at full strength (was 32 % before)."""
+        x = torch.tensor([[[[0.17, 0.17, 0.25]] * 4] * 4])  # blue-grey, hue 240°, S=0.32, V=0.25
+        vals = _defaults()
+        vals.update({"cr_0_src_hue": 240.0, "cr_0_src_sat": 0.32, "cr_0_src_bright": 0.25,
+                     "cr_0_tgt_hue": 0.0, "cr_0_tgt_sat": 1.0, "cr_0_tgt_bright": 1.0,
+                     "cr_0_intensity": 1.0, "cr_0_range": 30.0})
+        y = apply(x, vals)
+        # full replacement → red at V_tgt = 0.25 × (1.0/0.25) = 1.0
+        self.assertGreater(y[0, 0, 0, 0].item(), 0.9)
+        self.assertLess(y[0, 0, 0, 2].item(), 0.1)
 
 
 class TestColorReplaceWidget(unittest.TestCase):

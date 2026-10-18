@@ -250,7 +250,8 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._chain_order_btn.setToolTip(
             "Processing order: sections are applied top to bottom, each on the result of the one above. Drag to reorder.")
         self._chain_order_btn.clicked.connect(self._on_chain_order_clicked)
-        self.master = SliderRow("master", 0.0, 1.0, 1.0, 0.01, "MASTER", label_role="small")
+        # no label: the wordmark block already says MASTER and the slider sits right next to it
+        self.master = SliderRow("master", 0.0, 1.0, 1.0, 0.01, label_width=0)
         self.master.setObjectName("master")
         self.master.changed.connect(self._mode_changed)
         self._master_row = QWidget()
@@ -431,7 +432,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             "curves": (curves_h, []),
             "wheels": (self._wheel_header,
                        [self._wheel_amount, self._wheel_intensity_slider,
-                        self._wheel_blending_slider, self._wheel_balance_slider]),
+                        self._wheel_gain_slider, self._wheel_falloff_slider]),
             "lut": (self._lut_header, []),
             "reference": (ref_h, ref_rows),
         }

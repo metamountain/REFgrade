@@ -17,6 +17,7 @@ sys.modules["ref_grade"] = _pkg
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from ref_grade import scale  # noqa: E402
+from slow import slow  # noqa: E402
 
 
 # ── Pure function tests (no Qt needed) ───────────────────────────────────────
@@ -137,6 +138,7 @@ class TestDialogResponsiveFont(unittest.TestCase):
         self.app.processEvents()
         return d
 
+    @slow
     def test_font_grows_with_height(self):
         from ref_grade import style
         from PyQt6.QtWidgets import QLabel

@@ -28,8 +28,8 @@ def _lgg() -> list[Slider]:
     for c in chans:
         out.append(Slider(f"gain_{c}", "lgg", 0.0, 4.0, 1.0, 0.01,
                           core=(c == "m")))
-    out.append(Slider("wheel_blending", "lgg", 0.0, 1.0, 0.5, 0.01))   # Lightroom-Mitte (2026-10-11)
-    out.append(Slider("wheel_balance", "lgg", -1.0, 1.0, -0.3, 0.01))   # Nutzer 2026-10-12: Lichter sonst zu dominant
+    out.append(Slider("wheel_gain", "lgg", 0.0, 0.5, 0.1, 0.01))        # 2026-10-18: Kerngröße der Zonen (weisser Bereich)
+    out.append(Slider("wheel_falloff", "lgg", 0.0, 0.5, 0.1, 0.01))     # 2026-10-18: Blur-Breite (Glow) um die Kerne
     out.append(Slider("wheel_intensity", "lgg", 0.0, 2.0, 1.0, 0.01))  # Reichweite der Räder
     return out
 

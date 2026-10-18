@@ -65,7 +65,9 @@ def _replace_one(
 ) -> torch.Tensor:
     """Eine Instanz: Pixel im Hue-Bereich um src_hue werden zu tgt_Farbe gemischt.
 
-    src_sat skaliert die Maske: gesättigte Quelle → stärkerer Effekt.
+    src_sat ist reine Quellfarb-Beschreibung (für die Pipette/Wheel) und skaliert die
+    Maske NICHT (2026-10-18): dunkle/helle Quellen (Flugzeug, Weiß, S≈0) müssen voll
+    umfärbbar sein; Grauschutz übernimmt der sat_floor-Guard.
     src_bright: schwach modulierender Helligkeits-Faktor (0.7..1.0) — V nahe src_bright
         → volle Selektion (1.0), V weit entfernt → nur 0.7. Farbe bleibt primär,
         Helligkeit ist nur feine Abstimmung (dunkle + helle Varianten werden getroffen).
@@ -101,12 +103,14 @@ def _replace_one(
     # Wird unten zu einem schwachen Modulator (0.7..1.0) — kein hartes Selektions-Gate.
     bright_gate = (1.0 - (V - src_bright).abs() * 4.0).clamp(0.0, 1.0)
 
-    # Endgültige Maske: hue-plateau × sat_guard × bright_mod × src_sat × intensity
+    # Endgültige Maske: hue-plateau × sat_guard × bright_mod × intensity
     # Helligkeit nur schwach modulierend (0.7..1.0): Farbe ist primär,
     # Helligkeit nur feine Abstimmung. Dunkle + helle Varianten derselben
-    # Farbe werden beide getroffen.
+    # Farbe werden beide getroffen. src_sat skaliert NICHT (2026-10-18):
+    # dunkle/helle Quellen (Flugzeug, Weiß) müssen voll umfärbbar sein —
+    # Grauschutz macht der sat_floor-Guard.
     bright_mod = 0.7 + 0.3 * bright_gate
-    mask = mask * sat_guard * bright_mod * src_sat * intensity
+    mask = mask * sat_guard * bright_mod * intensity
 
     # Ziel-Farbe: tgt_hue/tgt_sat, OUTPUT-Helligkeit = Pixel-V × tgt_bright / src_bright
     gain = torch.as_tensor(tgt_bright, dtype=V.dtype, device=V.device) / torch.as_tensor(

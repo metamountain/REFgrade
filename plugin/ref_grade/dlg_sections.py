@@ -11,6 +11,7 @@ from . import scale, style
 from .curves_ui import CurvesEditor, CHANNELS, HUE_CHANNELS, ALL_CHANNELS
 from .widgets import ColorWheel, SectionHeader, SliderRow
 from .dlg_common import LABELS, DEFAULT_ON, WHEELS, POP_RECIPE, AUTO_SECTIONS
+from .zone_viz import ZoneVisualizer
 
 # Mouse-over help for the curve channel buttons (user 2026-10-12: the titles are cryptic).
 # Hue curves: the flat middle line means "no change"; drag a point up or down from it.
@@ -284,14 +285,25 @@ class SectionsMixin:
         cbox.addWidget(self._wheel_amount)
         self._wheel_header.set_amount_slider(self._wheel_amount)
         cbox.addWidget(_separator())
-        # Blending default 0.5 like Lightroom; Intensity scales the wheels' reach (2026-10-11)
-        self._wheel_blending_slider = SliderRow("wheel_blending", 0.0, 1.0, 0.5, 0.01, "Blending")
-        self._wheel_balance_slider = SliderRow("wheel_balance", -1.0, 1.0, -0.3, 0.01, "Balance")   # = core sliders.py default
+        # 2026-10-18 (user): Gain sizes the white zone cores, Falloff the blur (glow) —
+        # together they close the gaps between the zones (default: big gaps).
+        self._wheel_gain_slider = SliderRow("wheel_gain", 0.0, 0.5, 0.1, 0.01, "Gain")
+        self._wheel_falloff_slider = SliderRow("wheel_falloff", 0.0, 0.5, 0.1, 0.01, "Falloff")
         self._wheel_intensity_slider = SliderRow("wheel_intensity", 0.0, 2.0, 1.0, 0.01, "Intensity")
         self._wheel_intensity_slider.setObjectName("wheel_intensity")
         cbox.addWidget(self._wheel_intensity_slider)
-        cbox.addWidget(self._wheel_blending_slider)
-        cbox.addWidget(self._wheel_balance_slider)
+        cbox.addWidget(self._wheel_gain_slider)
+        cbox.addWidget(self._wheel_falloff_slider)
+        # 2026-10-18 (user): B/W zone map under the wheels — shows both Gain (core size)
+        # and Falloff (blur width) live. Re-renders only on those two sliders.
+        self._zone_viz = ZoneVisualizer()
+        self._zone_viz.set_gain(self._wheel_gain_slider.value())
+        self._zone_viz.set_falloff(self._wheel_falloff_slider.value())
+        self._wheel_gain_slider.changed.connect(
+            lambda _n, v: self._zone_viz.set_gain(v))
+        self._wheel_falloff_slider.changed.connect(
+            lambda _n, v: self._zone_viz.set_falloff(v))
+        cbox.addWidget(self._zone_viz)
         box.addWidget(content)
         self._wheel_content = content
         return w

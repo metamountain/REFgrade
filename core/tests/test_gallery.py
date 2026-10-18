@@ -25,17 +25,18 @@ def _defaults() -> dict[str, float]:
 
 def _make_test_pair(dev: torch.device, seed: int = 42) -> tuple[torch.Tensor, torch.Tensor]:
     torch.manual_seed(seed)
-    img = torch.rand(1, 64, 64, 3, device=dev)
-    x = torch.linspace(0, 1, 64, device=dev)
+    # Bild auf CPU erzeugen: torch.rand mit CUDA-Generator liefert bei gleichem Seed
+    # ANDERE Werte als CPU → ΔE-Schwellen wären geräteabhängig. (2026-10-18)
+    img = torch.rand(1, 64, 64, 3)
+    x = torch.linspace(0, 1, 64)
     grad = x[None, :, None].expand(1, 64, 64, 1)
-    img = img * 0.7 + grad * 0.3
-    img = img.clamp(0, 1)
+    img = (img * 0.7 + grad * 0.3).clamp(0, 1)
     # Vorlage: leicht anders
     vals = _defaults()
     vals["exposure"] = 0.15
     vals["temperature"] = 0.1
     ref = grade(img, vals).clamp(0, 1)
-    return img, ref
+    return img.to(dev), ref.to(dev)
 
 
 def _make_context(dev: torch.device, seed: int = 42) -> GalleryContext:
@@ -111,7 +112,12 @@ class TestGalleryDifferences(unittest.TestCase):
         return mean_de
 
     def test_light_candidates_differ(self):
-        """Light: Kandidaten unterscheiden sich vom Anker (ΔE00 ≥ 1.0, ≤ 8)."""
+        """Light: Kandidaten unterscheiden sich vom Anker (ΔE00 ≥ 0.2, ≤ 8).
+
+        2026-10-18: Schwelle 0.5 → 0.2 — im Bump-Modell wirken die Lift-Regler nur
+        noch in der Schattenzone (grosse Lücken), ihre Kandidaten sind auf Bildern
+        mit wenig Schatten von Natur aus schwach (ΔE00 ~0.26…0.60 bei voller
+        Schrittweite). Exposure/Contrast bleiben weit darüber."""
         dev = _get_device()
         ctx = _make_context(dev)
         anchor = _defaults()
@@ -121,8 +127,8 @@ class TestGalleryDifferences(unittest.TestCase):
             if i == 4:
                 continue
             de = self._delta_e(ctx, anchor, c)
-            self.assertGreaterEqual(de, 0.5,
-                                    f"light[{i}] ({c.label}): ΔE00={de:.3f} < 0.5")
+            self.assertGreaterEqual(de, 0.2,
+                                    f"light[{i}] ({c.label}): ΔE00={de:.3f} < 0.2")
             self.assertLessEqual(de, 8.0,
                                  f"light[{i}] ({c.label}): ΔE00={de:.3f} > 8.0")
 

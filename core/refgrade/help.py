@@ -135,35 +135,39 @@ HELP: dict[str, dict[str, str]] = {
         "tip": "1.0 = neutral; above 1 adds blue to the highlights (cooler), below 1 warmer. Range 0–4.0; typical 0.8–1.3.",
         "what": "Boosts or reduces blue in the highlight areas. Above 1.0 the highlights get cooler with more blue, below 1.0 they get warmer. 1.0 is neutral.",
     },
-    "wheel_blending": {
-        "short": "How much the three wheels overlap",
-        "en": "How much the Shadows, Mids and Highlights wheels overlap (like Lightroom's Blending). "
-              "The split sits at luminance p = 0.5 − 0.35·Balance; a smoothstep of half-width w "
-              "fades Shadows out and Highlights in around it. 0…0.5 widens w from 0.10 (pure zones) "
-              "to 0.40; 0.5…1 adds overlap until every wheel acts on every tone (1 = classic "
-              "lift/gamma/gain).",
-        "tip": "Default 0.5. Opposite colours (orange highlights, blue shadows) cancel in the "
-               "midtones when the zones overlap: go to 0–0.3 for a clean split-tone, 0.7–1 for a "
-               "soft overall cast.",
-        "what": "Controls how much the shadow, midtone and highlight wheels overlap. Left keeps the three zones separate, right lets every wheel act on every tone. 0.5 is the default, 0 to 0.3 gives a clean split-tone look.",
+    "wheel_gain": {
+        "short": "Size of each wheel's tone zone",
+        "en": "Each wheel acts on a small white area (core) at its end of the tone scale — shadows "
+              "at 0, mids at 0.5, highlights at 1. Gain sizes that core: 0.1 (default) is a small "
+              "area, 0.5 grows the shadow core to the whole lower half and the highlight core to "
+              "the whole upper half. At the default there are big gaps between the zones where no "
+              "wheel acts; raising Gain (and/or Falloff) closes them until the zones meet.",
+        "tip": "Default 0.1. Raise it when a wheel should reach further into the neighbouring "
+               "tones (e.g. the shadow wheel into the mids); lower it for tight, local tints. At 0 "
+               "a wheel acts on almost nothing.",
+        "what": "How big the tone area each wheel covers. Right makes the shadow, midtone and highlight zones grow until they touch; left shrinks them back to small areas with big gaps between them.",
     },
-    "wheel_balance": {
-        "short": "Moves the shadow/highlight boundary",
-        "en": "Moves the split between shadows and highlights: p = 0.5 − 0.35·Balance on the "
-              "luminance scale 0…1.",
-        "tip": "Positive = the highlight wheel reaches further down into the midtones, negative = "
-               "the shadow wheel reaches further up.",
-        "what": "Moves the boundary between the shadow and the highlight wheels. Right lets the highlight wheel reach further down into the midtones, left lets the shadow wheel reach further up.",
+    "wheel_falloff": {
+        "short": "Softness of the zone edges",
+        "en": "How far the white core of each zone blurs into the neighbouring tones (a glow). 0 is "
+              "a hard edge, 0.5 a very wide soft gradient. Together with Gain it closes the gaps "
+              "between the zones: Gain grows the cores, Falloff widens the blur around them. At "
+              "the default (0.1 / 0.1) the zones are separate with big gaps.",
+        "tip": "Default 0.1. Raise it for a soft, gradual transition between the wheel zones; keep "
+               "it low when opposite colours (orange highlights, blue shadows) must not muddy the "
+               "midtones.",
+        "what": "How soft the edge of each wheel zone is. Right blurs the zone into the neighbouring tones like a glow; left keeps a hard edge.",
     },
     "wheel_intensity": {
         "short": "Strength of all three colour wheels",
         "en": "Reach of all three colour wheels. Scales only their colour, not their brightness "
               "(H/M/L master): lift·k, gamma^k, gain^k. At the wheel's rim and k = 1 that is lift "
               "±0.15, gamma ×0.71…1.41, gain ×0.76…1.32; k = 2 doubles the lift and squares the "
-              "factors.",
+              "factors, which quickly pushes saturated tones into an unnatural, neon look.",
         "tip": "1 = normal. Raise it when a wheel at the rim is still too weak; lower it for fine "
-               "work near the centre. Beyond ~1.5 bright tones clip quickly.",
-        "what": "Scales the strength of all three color wheels together. Right makes the wheel colors stronger, left weaker, without changing the brightness wheels. 1 is normal; raise it when a wheel at the rim is still too weak.",
+               "work near the centre. Beyond ~1.5 bright tones clip quickly and the tint can turn "
+               "neon/oversaturated — if it looks artificial, drop it back toward 1.",
+        "what": "Scales the strength of all three color wheels together. Right makes the wheel colors stronger, left weaker, without changing the brightness wheels. 1 is normal; raise it when a wheel at the rim is still too weak. Past about 1.5 the colors can look oversaturated and neon — if that happens, lower it back toward 1.",
     },
     # ── SLIDERS: contrast ──────────────────────────────────────────────────
     "contrast": {
@@ -483,9 +487,9 @@ HELP: dict[str, dict[str, str]] = {
     },
     "cr_0_src_sat": {
         "short": "Source saturation (instance 1)",
-        "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
-        "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
-        "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
+        "en": "Saturation of the picked source color. Describes the color; it does not scale the effect.",
+        "tip": "Set by the pipette or the wheel; use Min sat to include pale, grey or white pixels.",
+        "what": "The saturation of the source color, set when you pick it. It only describes the color you picked — it does not limit how strongly pixels are replaced. To decide whether pale, grey and white pixels are included, use Min sat instead."
     },
     "cr_0_src_bright": {
         "short": "Source luminance (instance 1)",

@@ -83,19 +83,25 @@ class TestSplitLine(unittest.TestCase):
         v.split_pos = 0.5
         v.show()
         self.app.processEvents()
+        QTest.qWaitForWindowExposed(v)   # QWindow-Overload braucht ein exposed Window
         self.assertGreaterEqual(v._split_grab_half(), 20)
         y = H // 3
         start = QPoint(W // 2 + 20, y)
-        QTest.mouseMove(v, start)
+        # QWindow-Overload statt QWidget-Overload: der QWidget-Pfad nutzt QCursor::setPos
+        # (asynchroner WM-Roundtrip; Timing/Placement WM-abhaengig) und wird im
+        # Shared-Process-Runner unzuverlaessig. Die QWindow-Variante liefert das Event
+        # sofort und synchron. (Qt-Wiki "Writing good tests", 2026-10-18)
+        win = v.window()
+        QTest.mouseMove(win, start)
         self.app.processEvents()
         self.assertEqual(v.cursor().shape(), Qt.CursorShape.SizeHorCursor, "hover cursor")
-        QTest.mousePress(v, Qt.MouseButton.LeftButton, pos=start)
-        QTest.mouseMove(v, QPoint(W // 4, y))
-        QTest.mouseRelease(v, Qt.MouseButton.LeftButton, pos=QPoint(W // 4, y))
+        QTest.mousePress(win, Qt.MouseButton.LeftButton, pos=start)
+        QTest.mouseMove(win, QPoint(W // 4, y))
+        QTest.mouseRelease(win, Qt.MouseButton.LeftButton, pos=QPoint(W // 4, y))
         self.app.processEvents()
         self.assertAlmostEqual(v.split_pos, 0.25, delta=0.01)
         far = QPoint(W - 60, y)
-        QTest.mouseMove(v, far)
+        QTest.mouseMove(win, far)
         self.app.processEvents()
         self.assertNotEqual(v.cursor().shape(), Qt.CursorShape.SizeHorCursor, "no cursor far away")
         v.close()
