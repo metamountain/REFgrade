@@ -9,6 +9,30 @@ from . import style
 from .dlg_common import load_auto_help
 
 
+class HelpMixin:
+    """Frozen-help fix (2026-10-17): helpers for the '?' open-state tracker + the app-level
+    press filter. Mixed into RefGradeDialog (kept out of dialog.py for the 900-line limit).
+    Lazy imports avoid a widgets/dialog import cycle."""
+
+    def _help_trackers(self) -> list:
+        """Section tracker + every SliderRow '?' tracker (for _HelpPressFilter)."""
+        from .widgets import SliderRow
+        return [self._help_tracker] + [r._help_tracker for r in self.findChildren(SliderRow)
+                                       if getattr(r, "_help_tracker", None)]
+
+    def _close_help_popup(self) -> None:
+        if self._help_popup is not None:
+            self._help_popup.close()
+            self._help_popup = None
+
+    def _remove_help_press_filter(self) -> None:
+        """Uninstall the app-level help press filter (idempotent)."""
+        from PyQt6.QtWidgets import QApplication
+        if getattr(self, "_help_press_filter", None) and (app := QApplication.instance()):
+            app.removeEventFilter(self._help_press_filter)
+            self._help_press_filter = None
+
+
 def _help_html(section_key: str, text: str) -> str:
     """Format SECTION_HELP text as HTML: bold headings, monospace formulas, muted body."""
     import re, html as _html
@@ -55,6 +79,9 @@ class HelpPopup(QWidget):
 
     def __init__(self, section_key: str, width: int, parent: QWidget | None = None):
         super().__init__(parent, Qt.WindowType.Popup)
+        # Don't replay the closing click onto the widget behind the popup (QMenu does the
+        # same); the '?' toggle is handled by the dialog's tracker instead.
+        self.setAttribute(Qt.WidgetAttribute.WA_NoMouseReplay)
         self._section_key = section_key
         self.setFixedWidth(width)
         self.setStyleSheet(

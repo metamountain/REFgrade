@@ -56,7 +56,7 @@ class TestGradeIndividualSlider(unittest.TestCase):
     }
     # cr_*-Regler brauchen intensity > 0, um etwas zu tun
     for _i in range(8):
-        for _k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "range"):
+        for _k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "range", "sat_floor"):
             COMBO[f"cr_{_i}_{_k}"] = {f"cr_{_i}_intensity": 0.5}
 
     def _test_single_slider(self, name: str, offset: float):

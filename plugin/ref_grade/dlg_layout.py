@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PyQt6.QtCore import QRegularExpression, QSize, QTimer, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPen, QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from . import scale, schemes, style, win_chrome
 from .version import __version__
@@ -356,33 +356,48 @@ class LayoutMixin:
 
 
     def _build_wordmark(self) -> QWidget:
-        """K41a: 'REF' (accent, bold) + 'grade' (text, light) + small dim 'v<version>'."""
+        """K41b: 'REFgrade' (RichText bold+light) | v<version> / MASTER (top/bottom, dim)."""
         box = QWidget()
         box.setObjectName("wordmark")
         lay = QHBoxLayout(box)
         lay.setContentsMargins(0, 0, 4, 0)
-        lay.setSpacing(0)
-        self._wm_ref = QLabel("REF")
-        self._wm_grade = QLabel("grade")
-        self._wm_version = QLabel(f" v{__version__}")
-        for lbl, role, weight in ((self._wm_ref, "title", QFont.Weight.Bold),
-                                  (self._wm_grade, "title", QFont.Weight.Light),
-                                  (self._wm_version, "small", QFont.Weight.Normal)):
-            lbl.setFont(style.font(role, weight))
-            lbl.setProperty("font_role", role)
-            lbl.setProperty("font_weight", weight)
-            lay.addWidget(lbl)
-        self._wm_ref.setObjectName("wm_ref")
+        lay.setSpacing(10)
+        self._wm_brand = QLabel(
+            '<span style="font-weight:700;">REF</span>'
+            '<span style="font-weight:300;">grade</span>'
+        )
+        self._wm_brand.setTextFormat(Qt.TextFormat.RichText)
+        self._wm_brand.setFont(style.font("title"))
+        self._wm_brand.setProperty("font_role", "title")
+        self._wm_brand.setProperty("wordmark", "ref")
+        lay.addWidget(self._wm_brand)
+        self._wm_sep = QFrame()
+        self._wm_sep.setFrameShape(QFrame.Shape.VLine)
+        self._wm_sep.setObjectName("wm_sep")
+        lay.addWidget(self._wm_sep)
+        meta = QVBoxLayout()
+        meta.setContentsMargins(0, 0, 0, 0)
+        meta.setSpacing(0)
+        self._wm_version = QLabel(f"v{__version__}")
+        self._wm_master = QLabel("MASTER")
+        self._wm_version.setFont(style.font("small"))
+        self._wm_master.setFont(style.font("small"))
+        self._wm_version.setProperty("font_role", "small")
+        self._wm_master.setProperty("font_role", "small")
+        self._wm_master.setProperty("letter_spacing", True)
+        meta.addWidget(self._wm_version)
+        meta.addStretch(1)
+        meta.addWidget(self._wm_master)
+        lay.addLayout(meta)
         self._wm_version.setObjectName("wm_version")
-        self._wm_ref.setProperty("wordmark", "ref")
-        self._wm_grade.setProperty("wordmark", "grade")
         self._wm_version.setProperty("wordmark", "ver")
+        self._wm_master.setProperty("wordmark", "master")
         self._restyle_wordmark()
         return box
 
     def _restyle_wordmark(self) -> None:
         """Colours come from the stylesheet (QLabel[wordmark=...]); re-polish after a scheme change."""
-        for lbl in (self._wm_ref, self._wm_grade, self._wm_version):
+        for lbl in (self._wm_brand, self._wm_version, self._wm_master):
             lbl.style().unpolish(lbl)
             lbl.style().polish(lbl)
 
@@ -478,9 +493,9 @@ class LayoutMixin:
         for _band_rows in self._hsl_sliders.values():
             _apply_label_width(_band_rows)
         self._layout_not_in_lut()   # after the pass above, which squeezed '(no LUT!)'
-        # master row
+        # master row (label is "small" role, like the wordmark version)
         if hasattr(self, "master"):
-            fm = QFontMetrics(style.font("base"))
+            fm = QFontMetrics(style.font("small"))
             pad = scale.row_h(style.current_s()) // 2
             self.master.set_label_width(fm.horizontalAdvance("MASTER") + pad)
 

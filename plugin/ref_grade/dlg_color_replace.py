@@ -262,15 +262,18 @@ class _CRInstance(QWidget):
         grid.addWidget(self.src_bright, 1, 0)
         grid.addWidget(self.tgt_bright, 1, 1)
 
-        # ── Row 2: intensity + range sliders, spanning both columns ──
+        # ── Row 2: intensity + range + min-sat sliders, spanning both columns ──
         slider_box = QVBoxLayout()
         slider_box.setSpacing(2)
         self.intensity = SliderRow(
             f"cr_{index}_intensity", 0.0, 2.0, 0.5, 0.01, "Intensity", label_width=65)
         self.range = SliderRow(
             f"cr_{index}_range", 1.0, 180.0, 30.0, 1.0, "Range °", label_width=65)
+        self.sat_floor = SliderRow(
+            f"cr_{index}_sat_floor", 0.0, 0.3, 0.15, 0.01, "Min sat", label_width=65)
         slider_box.addWidget(self.intensity)
         slider_box.addWidget(self.range)
+        slider_box.addWidget(self.sat_floor)
         grid.addLayout(slider_box, 2, 0, 1, 2)
 
         # ── Close button (×) top-right corner: instance #1 has none ──
@@ -289,6 +292,7 @@ class _CRInstance(QWidget):
         self.tgt_bright.changed.connect(self._on_tgt_bright_changed)
         self.intensity.changed.connect(lambda *_a: self.changed.emit())
         self.range.changed.connect(lambda *_a: self.changed.emit())
+        self.sat_floor.changed.connect(lambda *_a: self.changed.emit())
 
     def _on_src_wheel_changed(self, *_a) -> None:
         self._update_squares()
@@ -317,6 +321,7 @@ class _CRInstance(QWidget):
         self.tgt_bright.set_value(0.5)
         self.intensity.set_value(0.5)
         self.range.set_value(30.0)
+        self.sat_floor.set_value(0.15)
         self._update_squares()
         self.changed.emit()
 
@@ -365,6 +370,7 @@ class _CRInstance(QWidget):
             f"cr_{i}_tgt_bright": self.tgt_bright.value(),
             f"cr_{i}_intensity": self.intensity.value(),
             f"cr_{i}_range": self.range.value(),
+            f"cr_{i}_sat_floor": self.sat_floor.value(),
         }
 
     def set_values(self, vals: dict[str, float]) -> None:
@@ -491,7 +497,7 @@ class ColorReplaceSection(QWidget):
         box.setContentsMargins(0, 0, 0, 2)
         box.setSpacing(1)
 
-        self.header = SectionHeader("color_replace", "Color Replace", on=True)
+        self.header = SectionHeader("color_replace", "Color Replace", on=False)
         box.addWidget(self.header)
 
         self._content = QWidget()

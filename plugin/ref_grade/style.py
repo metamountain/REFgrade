@@ -269,9 +269,11 @@ QLabel[muted="true"] {{ color: {MUTED}; }}
 QLabel[section="true"] {{ color: {MUTED}; letter-spacing: 2px; }}
 QLabel[section="true"][state="on"] {{ color: {TEXT}; }}
 QLabel[section="true"][state="off"] {{ color: {DIM}; }}
-QLabel[wordmark="ref"] {{ color: {ACCENT}; }}
+QLabel[wordmark="ref"] {{ color: {TEXT}; }}
 QLabel[wordmark="grade"] {{ color: {TEXT}; }}
 QLabel[wordmark="ver"] {{ color: {DIM}; }}
+QLabel[wordmark="master"] {{ color: {DIM}; letter-spacing: 6px; }}
+QFrame#wm_sep {{ background: {LINE}; max-width: 1px; min-width: 1px; }}
 QPushButton {{ background: {BLACK}; color: {TEXT}; border: 1px solid {LINE_STRONG};
               padding: 6px 12px; }}
 QPushButton:hover {{ border-color: {MUTED}; }}

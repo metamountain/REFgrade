@@ -66,6 +66,7 @@ def _color_replace() -> list[Slider]:
         out.append(Slider(f"cr_{i}_tgt_bright", "color_replace", 0.0, 1.0, 0.5, 0.01))
         out.append(Slider(f"cr_{i}_intensity", "color_replace", 0.0, 2.0, 0.0, 0.01))
         out.append(Slider(f"cr_{i}_range", "color_replace", 1.0, 180.0, 30.0, 1.0))
+        out.append(Slider(f"cr_{i}_sat_floor", "color_replace", 0.0, 0.3, 0.15, 0.01))
     return out
 
 

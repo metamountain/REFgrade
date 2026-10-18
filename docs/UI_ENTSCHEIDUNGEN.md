@@ -1,5 +1,15 @@
 # UI-Entscheidungen (2026-10-15)
 
+## Wordmark neutral (2026-10-17)
+
+- **Logo ohne Blau:** „REF" = TEXT (weiß) + Bold, „grade" = TEXT + Light, „v<version>" = DIM —
+  `QLabel[wordmark="ref"]` in `style.py` war ACCENT, ist jetzt TEXT. Soll neutral sein (Nutzer).
+- **MASTER-Label = „small":** gleiche Größe wie die Versions-Nummer in der Wordmark
+  („all same size"). `SliderRow` hat jetzt `label_role` (Default „base"); die Master-Row
+  (dialog.py) übergibt „small", und `_deferred_label_update` (dlg_layout.py) berechnet die
+  Label-Breite mit `style.font("small")`.
+- **UI-Akzent bleibt blau** (Buttons, Slider, OK) — nur das Logo ist neutral.
+
 ## Hilfe pro Wert (K40a, 2026-10-16)
 
 - **"?"-Button pro Slider-Row:** quadratisch (row_h × row_h — wie Rad-↺ und allgemeiner "?"-Button,

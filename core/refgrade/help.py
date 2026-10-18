@@ -476,388 +476,436 @@ HELP: dict[str, dict[str, str]] = {
     },
     # ── SLIDERS: color replace ─────────────────────────────────────────────
     "cr_0_src_hue": {
-                "short": "Source hue (instance 1)",
+        "short": "Source hue (instance 1)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_0_src_sat": {
-                "short": "Source saturation (instance 1)",
+        "short": "Source saturation (instance 1)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_0_src_bright": {
-                "short": "Source luminance (instance 1)",
+        "short": "Source luminance (instance 1)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_0_tgt_hue": {
-                "short": "Target hue (instance 1)",
+        "short": "Target hue (instance 1)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_0_tgt_sat": {
-                "short": "Target saturation (instance 1)",
+        "short": "Target saturation (instance 1)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_0_tgt_bright": {
-                "short": "Target luminance (instance 1)",
+        "short": "Target luminance (instance 1)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_0_intensity": {
-                "short": "Replace strength (instance 1)",
+        "short": "Replace strength (instance 1)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_0_range": {
-                "short": "Hue range (instance 1)",
+        "short": "Hue range (instance 1)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_1_src_hue": {
-                "short": "Source hue (instance 2)",
+        "short": "Source hue (instance 2)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_1_src_sat": {
-                "short": "Source saturation (instance 2)",
+        "short": "Source saturation (instance 2)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_1_src_bright": {
-                "short": "Source luminance (instance 2)",
+        "short": "Source luminance (instance 2)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_1_tgt_hue": {
-                "short": "Target hue (instance 2)",
+        "short": "Target hue (instance 2)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_1_tgt_sat": {
-                "short": "Target saturation (instance 2)",
+        "short": "Target saturation (instance 2)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_1_tgt_bright": {
-                "short": "Target luminance (instance 2)",
+        "short": "Target luminance (instance 2)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_1_intensity": {
-                "short": "Replace strength (instance 2)",
+        "short": "Replace strength (instance 2)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_1_range": {
-                "short": "Hue range (instance 2)",
+        "short": "Hue range (instance 2)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_2_src_hue": {
-                "short": "Source hue (instance 3)",
+        "short": "Source hue (instance 3)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_2_src_sat": {
-                "short": "Source saturation (instance 3)",
+        "short": "Source saturation (instance 3)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_2_src_bright": {
-                "short": "Source luminance (instance 3)",
+        "short": "Source luminance (instance 3)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_2_tgt_hue": {
-                "short": "Target hue (instance 3)",
+        "short": "Target hue (instance 3)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_2_tgt_sat": {
-                "short": "Target saturation (instance 3)",
+        "short": "Target saturation (instance 3)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_2_tgt_bright": {
-                "short": "Target luminance (instance 3)",
+        "short": "Target luminance (instance 3)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_2_intensity": {
-                "short": "Replace strength (instance 3)",
+        "short": "Replace strength (instance 3)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_2_range": {
-                "short": "Hue range (instance 3)",
+        "short": "Hue range (instance 3)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_3_src_hue": {
-                "short": "Source hue (instance 4)",
+        "short": "Source hue (instance 4)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_3_src_sat": {
-                "short": "Source saturation (instance 4)",
+        "short": "Source saturation (instance 4)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_3_src_bright": {
-                "short": "Source luminance (instance 4)",
+        "short": "Source luminance (instance 4)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_3_tgt_hue": {
-                "short": "Target hue (instance 4)",
+        "short": "Target hue (instance 4)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_3_tgt_sat": {
-                "short": "Target saturation (instance 4)",
+        "short": "Target saturation (instance 4)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_3_tgt_bright": {
-                "short": "Target luminance (instance 4)",
+        "short": "Target luminance (instance 4)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_3_intensity": {
-                "short": "Replace strength (instance 4)",
+        "short": "Replace strength (instance 4)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_3_range": {
-                "short": "Hue range (instance 4)",
+        "short": "Hue range (instance 4)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_4_src_hue": {
-                "short": "Source hue (instance 5)",
+        "short": "Source hue (instance 5)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_4_src_sat": {
-                "short": "Source saturation (instance 5)",
+        "short": "Source saturation (instance 5)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_4_src_bright": {
-                "short": "Source luminance (instance 5)",
+        "short": "Source luminance (instance 5)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_4_tgt_hue": {
-                "short": "Target hue (instance 5)",
+        "short": "Target hue (instance 5)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_4_tgt_sat": {
-                "short": "Target saturation (instance 5)",
+        "short": "Target saturation (instance 5)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_4_tgt_bright": {
-                "short": "Target luminance (instance 5)",
+        "short": "Target luminance (instance 5)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_4_intensity": {
-                "short": "Replace strength (instance 5)",
+        "short": "Replace strength (instance 5)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_4_range": {
-                "short": "Hue range (instance 5)",
+        "short": "Hue range (instance 5)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_5_src_hue": {
-                "short": "Source hue (instance 6)",
+        "short": "Source hue (instance 6)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_5_src_sat": {
-                "short": "Source saturation (instance 6)",
+        "short": "Source saturation (instance 6)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_5_src_bright": {
-                "short": "Source luminance (instance 6)",
+        "short": "Source luminance (instance 6)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_5_tgt_hue": {
-                "short": "Target hue (instance 6)",
+        "short": "Target hue (instance 6)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_5_tgt_sat": {
-                "short": "Target saturation (instance 6)",
+        "short": "Target saturation (instance 6)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_5_tgt_bright": {
-                "short": "Target luminance (instance 6)",
+        "short": "Target luminance (instance 6)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_5_intensity": {
-                "short": "Replace strength (instance 6)",
+        "short": "Replace strength (instance 6)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_5_range": {
-                "short": "Hue range (instance 6)",
+        "short": "Hue range (instance 6)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_6_src_hue": {
-                "short": "Source hue (instance 7)",
+        "short": "Source hue (instance 7)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_6_src_sat": {
-                "short": "Source saturation (instance 7)",
+        "short": "Source saturation (instance 7)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_6_src_bright": {
-                "short": "Source luminance (instance 7)",
+        "short": "Source luminance (instance 7)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_6_tgt_hue": {
-                "short": "Target hue (instance 7)",
+        "short": "Target hue (instance 7)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_6_tgt_sat": {
-                "short": "Target saturation (instance 7)",
+        "short": "Target saturation (instance 7)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_6_tgt_bright": {
-                "short": "Target luminance (instance 7)",
+        "short": "Target luminance (instance 7)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_6_intensity": {
-                "short": "Replace strength (instance 7)",
+        "short": "Replace strength (instance 7)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_6_range": {
-                "short": "Hue range (instance 7)",
+        "short": "Hue range (instance 7)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
     },
     "cr_7_src_hue": {
-                "short": "Source hue (instance 8)",
+        "short": "Source hue (instance 8)",
         "en": "Center hue of the source range in degrees (0–360). Pixels within ±range of this hue are affected.",
         "tip": "Pick the dominant hue you want to replace. Use the color wheel.",
         "what": "Chooses which color in the image this instance works on. Move it to the hue you want to replace, like a blue sky or green grass. The source wheel next to it shows the selected color."
     },
     "cr_7_src_sat": {
-                "short": "Source saturation (instance 8)",
+        "short": "Source saturation (instance 8)",
         "en": "Scales the mask: higher = only saturated pixels affected. 0 = no effect, 1 = full.",
         "tip": "1.0 for vivid colors, 0.5 for pastel tones.",
         "what": "Sets how saturated the source color has to be for this instance to act. Right only affects vivid colors, left also includes pale and greyish ones. 1.0 for vivid colors, 0.5 for pastel tones."
     },
     "cr_7_src_bright": {
-                "short": "Source luminance (instance 8)",
+        "short": "Source luminance (instance 8)",
         "en": "Shifts the luminance match window. 0 = mid, -1 = shadows only, 1 = highlights only.",
         "tip": "0 matches all brightness, -0.5 favors shadows, 0.5 favors highlights.",
         "what": "Sets which brightness range the source color has to have. Right only affects bright areas, left only dark ones. 0 matches all brightness levels."
     },
     "cr_7_tgt_hue": {
-                "short": "Target hue (instance 8)",
+        "short": "Target hue (instance 8)",
         "en": "Replacement hue in degrees (0–360). Affected pixels blend toward this hue.",
         "tip": "Pick the desired replacement color on the target wheel.",
         "what": "Chooses the replacement color for the matched areas. Move it to the hue you want the source color to turn into. The target wheel next to it shows the selected replacement color."
     },
     "cr_7_tgt_sat": {
-                "short": "Target saturation (instance 8)",
+        "short": "Target saturation (instance 8)",
         "en": "Saturation of the replacement color. 0 = grey, 1 = fully saturated.",
         "tip": "Match the source saturation or adjust for a muted look.",
         "what": "Sets how saturated the replacement color is. Right makes the replacement more vivid, left more muted. Match the source saturation or lower it for a muted look."
     },
     "cr_7_tgt_bright": {
-                "short": "Target luminance (instance 8)",
+        "short": "Target luminance (instance 8)",
         "en": "Adds brightness offset to the replacement color. -1 = darker, 0 = unchanged, 1 = brighter.",
         "tip": "0 keeps original brightness, -0.3 darkens, 0.3 lightens replaced pixels.",
         "what": "Makes the replacement color brighter or darker than the original. Right lightens the replaced areas, left darkens them. 0 keeps the original brightness."
     },
     "cr_7_intensity": {
-                "short": "Replace strength (instance 8)",
+        "short": "Replace strength (instance 8)",
         "en": "Blend factor: out = x + mask * intensity * (target - x). 0 = off, 1 = full replacement.",
         "tip": "0.5 for subtle shifts, 1.0 for complete replacement.",
         "what": "Sets how strongly this instance replaces the source color. Right replaces it more completely, left blends it in more subtly. 0.5 for subtle shifts, 1.0 for a complete replacement."
     },
     "cr_7_range": {
-                "short": "Hue range (instance 8)",
+        "short": "Hue range (instance 8)",
         "en": "Half-width of the hue window in degrees. mask = max(0, 1 - |Δhue|/range).",
         "tip": "30° for a narrow band, 90°+ for a wide range.",
         "what": "Sets how wide the hue range is around the source color. Right includes more neighboring colors, left only a narrow band. 30 degrees for a narrow band, 90 or more for a wide range."
+    },
+    "cr_0_sat_floor": {
+        "short": "Min saturation (instance 1)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_1_sat_floor": {
+        "short": "Min saturation (instance 2)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_2_sat_floor": {
+        "short": "Min saturation (instance 3)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_3_sat_floor": {
+        "short": "Min saturation (instance 4)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_4_sat_floor": {
+        "short": "Min saturation (instance 5)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_5_sat_floor": {
+        "short": "Min saturation (instance 6)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_6_sat_floor": {
+        "short": "Min saturation (instance 7)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
+    },
+    "cr_7_sat_floor": {
+        "short": "Min saturation (instance 8)",
+        "en": "Saturation at which the effect is fully on. Lower = also affects pale and grey pixels. 0 = no guard (affects white).",
+        "tip": "0.15 default, lower to reach pale colors, 0 to affect white and grey.",
+        "what": "Sets how saturated a pixel must be for this instance to act on it. Right only affects vivid colors, left also reaches pale, grey and white ones. 0.15 is the default; 0 turns the guard off entirely so even white and grey pixels are replaced."
     },
 }
 

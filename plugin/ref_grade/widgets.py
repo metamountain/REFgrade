@@ -12,11 +12,13 @@ import math
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import QElapsedTimer, QEvent, QPointF, QPoint, QRectF, QSize, QSizeF, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import (QElapsedTimer, QEvent, QObject, QPointF, QPoint, QRectF, QSize, QSizeF, Qt,
+                          QTimer, pyqtSignal)
 from PyQt6.QtGui import (QBrush, QColor, QConicalGradient, QFont, QFontMetrics, QImage, QPainter,
                           QLinearGradient, QPainterPath, QPen, QPixmap, QRadialGradient)
-from PyQt6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QSizePolicy,
-                              QSlider, QStyle, QStyleOptionSlider, QToolTip, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (QApplication, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton,
+                              QSizePolicy, QSlider, QStyle, QStyleOptionSlider, QToolTip, QVBoxLayout,
+                              QWidget)
 
 from . import scale, style, wheels
 from .dlg_common import load_help
@@ -38,6 +40,74 @@ def _build_vs_color_lut() -> tuple[tuple[int, int, int], ...]:
 
 
 VS_COLOR_LUT = _build_vs_color_lut()
+
+
+# ── Help-popup open-state tracking (frozen-help fix, 2026-10-17) ──────────────
+
+class _HelpPopupTracker:
+    """Tracks whether a Qt.Popup help popup is open, across the auto-close race.
+
+    A Qt.Popup window is auto-closed by Qt when its own '?' button is clicked (the
+    button's window activates, the popup loses activation) — during the press, before
+    the release's clicked() runs. So the popup is already hidden when clicked() fires
+    and a naive isVisible() toggle re-opens it (the 'frozen help' bug). The explicit
+    open flag below survives that auto-close; _HelpPressFilter clears it on a genuine
+    click-away (a press not on the toggle button and not inside the popup), so the
+    next '?' click is read as an open again.
+    """
+
+    def __init__(self, toggle_buttons, popup_getter):
+        if not isinstance(toggle_buttons, (list, tuple)):
+            toggle_buttons = [toggle_buttons]
+        self._toggle_buttons = [b for b in toggle_buttons if b is not None]
+        self._popup_getter = popup_getter          # callable() -> QWidget | None
+        self._open_value = None                    # truthy = open (section key or True)
+
+    @property
+    def is_open(self) -> bool:
+        return bool(self._open_value)
+
+    def open_value(self):
+        return self._open_value
+
+    def set_open(self, value) -> None:
+        self._open_value = value
+
+    def handle_press(self, obj, event) -> None:
+        """Clear the open flag on a genuine click-away (called by _HelpPressFilter)."""
+        if not self._open_value:
+            return
+        for b in self._toggle_buttons:
+            if obj is b:
+                return
+        pop = self._popup_getter()
+        if pop is not None and pop.isVisible():
+            try:
+                if pop.rect().contains(pop.mapFromGlobal(event.globalPosition().toPoint())):
+                    return
+            except RuntimeError:
+                pass
+        self._open_value = None
+
+
+class _HelpPressFilter(QObject):
+    """App-level filter: clears help-popup open flags on a press outside the popup and
+    its toggle button(s). The popup auto-closes on such a press; the flag must not
+    outlive it, or the next '?' click would be read as a close instead of an open."""
+
+    def __init__(self, trackers_getter):
+        super().__init__()
+        self._trackers_getter = trackers_getter    # callable() -> list[_HelpPopupTracker]
+        self._app = QApplication.instance()
+        if self._app is not None:
+            self._app.installEventFilter(self)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if event.type() != QEvent.Type.MouseButtonPress:
+            return False
+        for t in self._trackers_getter():
+            t.handle_press(obj, event)
+        return False
 
 
 # ── Reference slots ───────────────────────────────────────────────────────────
@@ -387,6 +457,7 @@ class SliderRow(QWidget):
 
     def __init__(self, name: str, lo: float, hi: float, default: float, step: float,
                  label: str = "", label_width: int = 100, track=None,
+                 label_role: str = "base",
                  parent: QWidget | None = None):
         super().__init__(parent)
         self.name, self.lo, self.step, self.default = name, lo, step, default
@@ -413,8 +484,8 @@ class SliderRow(QWidget):
         self.value_label.mouseDoubleClickEvent = lambda _e: self.set_value(self.default)
         if label_width > 0:
             lbl = QLabel(self._label_text)
-            lbl.setFont(style.font("base"))
-            lbl.setProperty("font_role", "base")
+            lbl.setFont(style.font(label_role))
+            lbl.setProperty("font_role", label_role)
             lbl.setProperty("muted", True)
             lbl.setFixedWidth(label_width)
             row.addWidget(lbl)
@@ -422,6 +493,7 @@ class SliderRow(QWidget):
         # K40a: "?" button directly left of the value label (the reset double-click spot)
         self.help_btn: QPushButton | None = None
         self.help_popup: QLabel | None = None
+        self._help_tracker: _HelpPopupTracker | None = None
         entry = load_help().get(self.name)
         if entry:
             self.help_btn = small_button("?", tip=entry.get("short", ""))
@@ -430,6 +502,7 @@ class SliderRow(QWidget):
             self.help_btn.setFixedSize(_hs, _hs)   # square, like the wheel ↺ and general "?" buttons
             self.help_btn.clicked.connect(self._show_help_popup)
             row.addWidget(self.help_btn)
+            self._help_tracker = _HelpPopupTracker(self.help_btn, lambda: self.help_popup)
         row.addWidget(self.value_label)
         self.slider.valueChanged.connect(self._on_change)
         self.set_value(default)
@@ -465,13 +538,24 @@ class SliderRow(QWidget):
             lay.activate()
 
     def _show_help_popup(self, *_args) -> None:
-        """K40a: popup at the "?" button: short (bold), what, tip (italic); closes on click away."""
+        """K40a: popup at the "?" button: short (bold), what, tip (italic).
+
+        Toggles: the '?' click auto-closes the Qt.Popup during the press (before this
+        clicked() runs), so the open decision reads the tracker flag, not isVisible()
+        (frozen-help fix, 2026-10-17). A click away clears the flag via _HelpPressFilter.
+        """
         entry = load_help().get(self.name)
-        if not entry or self.help_btn is None:
+        if not entry or self.help_btn is None or self._help_tracker is None:
+            return
+        if self._help_tracker.is_open:
+            self._help_tracker.set_open(False)
+            if self.help_popup is not None:
+                self.help_popup.hide()
             return
         if self.help_popup is None:
             self.help_popup = QLabel(self)
             self.help_popup.setWindowFlags(Qt.WindowType.Popup)
+            self.help_popup.setAttribute(Qt.WidgetAttribute.WA_NoMouseReplay)
             self.help_popup.setTextFormat(Qt.TextFormat.RichText)
             self.help_popup.setWordWrap(True)
             self.help_popup.setFont(style.font("small"))
@@ -485,6 +569,7 @@ class SliderRow(QWidget):
         self.help_popup.adjustSize()
         self.help_popup.move(self.help_btn.mapToGlobal(self.help_btn.rect().bottomLeft()))
         self.help_popup.show()
+        self._help_tracker.set_open(True)
 
     def label_text(self) -> str:
         """The label text shown to the left of the slider."""

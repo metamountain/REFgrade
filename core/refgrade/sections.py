@@ -26,7 +26,7 @@ SECTIONS: dict[str, tuple[str, ...]] = {
     "hsl": tuple(f"sel_{b}_{p}" for b in ("red", "yellow", "green", "cyan", "blue", "magenta")
                  for p in ("hue", "sat", "light")),
     "color_replace": tuple(f"cr_{i}_{k}" for i in range(8)
-                           for k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "intensity", "range")),
+                           for k in ("src_hue", "src_sat", "src_bright", "tgt_hue", "tgt_sat", "tgt_bright", "intensity", "range", "sat_floor")),
     "curves": (),
     "lut": (),
 }

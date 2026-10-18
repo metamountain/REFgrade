@@ -238,6 +238,34 @@ class TestColorReplace(unittest.TestCase):
         """MAX_INSTANCES = 8."""
         self.assertEqual(MAX_INSTANCES, 8)
 
+    def test_sat_floor_default_protects_grey(self):
+        """2026-10-18: Default sat_floor (0.15) keeps the old guard — grey (S=0) untouched."""
+        x = _grey_image()
+        vals = _defaults()
+        self.assertEqual(vals["cr_0_sat_floor"], 0.15)
+        vals.update({"cr_0_src_hue": 240.0, "cr_0_src_sat": 1.0, "cr_0_tgt_hue": 0.0,
+                     "cr_0_tgt_sat": 1.0, "cr_0_intensity": 1.0, "cr_0_range": 180.0})
+        y = apply(x, vals)
+        torch.testing.assert_close(y, x)
+
+    def test_sat_floor_open_affects_desaturated(self):
+        """2026-10-18: sat_floor=0 lifts the guard, so a desaturated pixel is hit harder
+        than at the default (0.15)."""
+        # Pale blue, S≈0.08 (desaturated), hue≈210° (inside ±90° of the 240° source).
+        x = torch.tensor([[[[0.92, 0.96, 1.0]] * 4] * 4])
+        base = {"cr_0_src_hue": 240.0, "cr_0_src_sat": 1.0, "cr_0_tgt_hue": 0.0,
+                "cr_0_tgt_sat": 1.0, "cr_0_intensity": 1.0, "cr_0_range": 90.0,
+                "cr_0_src_bright": 1.0, "cr_0_tgt_bright": 1.0}
+
+        def _diff(sat_floor: float) -> float:
+            vals = _defaults()
+            vals.update(base)
+            vals["cr_0_sat_floor"] = sat_floor
+            return (apply(x, vals) - x).abs().max().item()
+
+        self.assertGreater(_diff(0.0), _diff(0.15),
+                           "opening the guard (0.0) should affect the desaturated pixel more")
+
 
 class TestColorReplaceWidget(unittest.TestCase):
     """PyQt6-Widget-Tests: die drei Wheels-Fixes (Removal, Size-Decision, Resize)."""

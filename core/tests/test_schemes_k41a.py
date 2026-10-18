@@ -77,10 +77,10 @@ class TestBranding(unittest.TestCase):
         try:
             self.assertTrue(dlg.windowTitle().startswith("REFgrade"))
             self.assertIn(__version__, dlg.windowTitle())
-            refs = [l for l in dlg.findChildren(QLabel) if l.text() == "REF"]
+            refs = [l for l in dlg.findChildren(QLabel) if l.property("wordmark") == "ref"]
             self.assertTrue(refs)
             sc = schemes.current_scheme()
-            self.assertEqual(refs[0].property("wordmark"), "ref")
+            self.assertIn("REF", refs[0].text())
             self.assertIn(sc.accent.lower(), dlg.styleSheet().lower())
             dlg._set_scheme("White")
             self.assertEqual(dlg.palette().window().color().name().lower(), "#f7f7f7")

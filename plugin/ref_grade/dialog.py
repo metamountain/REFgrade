@@ -25,7 +25,8 @@ from . import win_chrome
 from . import wheels
 from .curves_ui import CurvesEditor, CHANNELS, HUE_CHANNELS, ALL_CHANNELS
 from .widgets import (IMAGE_SUFFIXES, ColorWheel, Histogram, ImageView, RefSlots, ScopeButton,
-                      SectionHeader, SliderRow, Vectorscope, small_button)
+                      SectionHeader, SliderRow, Vectorscope, small_button,
+                      _HelpPopupTracker, _HelpPressFilter)
 from .dlg_common import (COLUMN_1, COLUMN_2, LABELS, POP_RECIPE, WHEELS, VISIBLE,
                          DEFAULT_ON, METHODS, CHAIN_ORDER, _DEBOUNCE_MS, _CROP_IDLE_MS,
                          load_sliders, load_help, load_auto_help)
@@ -33,7 +34,7 @@ from .dlg_sections import (SectionsMixin, _separator, _group, _apply_label_width
                            _curves_section, _hsl_track, _hsl_section,
                            HSL_BANDS, HSL_HUE, HSL_MODES)
 from .dlg_chain import ChainOrderPopup
-from .dlg_help_popup import HelpPopup, _help_html  # noqa: F401  (Tests importieren HelpPopup aus dialog)
+from .dlg_help_popup import HelpPopup, HelpMixin, _help_html  # noqa: F401  (Tests importieren HelpPopup aus dialog)
 from .dlg_layout import LayoutMixin
 from .dlg_lut import LutMixin
 from .dlg_panel_order import PanelOrderMixin
@@ -53,7 +54,7 @@ def _fmt_num(v: float) -> str:
 
 
 class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
-                     WorkerMixin, WhiteBalanceMixin, PanelOrderMixin, QDialog):
+                     WorkerMixin, WhiteBalanceMixin, PanelOrderMixin, HelpMixin, QDialog):
     """Maximised black window; layout per KONZEPT.md §3 (user sketch, second version)."""
 
     def __init__(self, image: QImage | None = None, parent: QWidget | None = None,
@@ -249,7 +250,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         self._chain_order_btn.setToolTip(
             "Processing order: sections are applied top to bottom, each on the result of the one above. Drag to reorder.")
         self._chain_order_btn.clicked.connect(self._on_chain_order_clicked)
-        self.master = SliderRow("master", 0.0, 1.0, 1.0, 0.01, "MASTER")
+        self.master = SliderRow("master", 0.0, 1.0, 1.0, 0.01, "MASTER", label_role="small")
         self.master.setObjectName("master")
         self.master.changed.connect(self._mode_changed)
         self._master_row = QWidget()
@@ -456,6 +457,12 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         # Wire all section signals
         self._help_popup: HelpPopup | None = None
         self._chain_order_popup: ChainOrderPopup | None = None
+        # Frozen-help fix (2026-10-17): open state lives in a flag the popup's auto-close
+        # does not clear; _HelpPressFilter clears it on a genuine click-away.
+        self._help_tracker = _HelpPopupTracker(
+            [self._general_help_btn] + [h.help_btn for h, _r in self.sections.values()],
+            lambda: self._help_popup)
+        self._help_press_filter = _HelpPressFilter(self._help_trackers)
         for header, rows in self.sections.values():
             header.weighted.connect(self._mode_changed)
             header.switched.connect(self._section_switched)
@@ -669,15 +676,15 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
 
 
     def _on_help_requested(self, key: str) -> None:
-        """Toggle the help popup for `key`; no preview, no state change."""
-        if self._help_popup is not None and self._help_popup.isVisible():
-            if self._help_popup._section_key == key:
-                self._help_popup.close()
-                self._help_popup = None
-                self._set_help_open(key, False)
-                return
-            self._help_popup.close()
-            self._help_popup = None
+        """Toggle the help popup for `key`. Reads the tracker flag, not isVisible():
+        the '?' click auto-closes the Qt.Popup during the press (before clicked() runs),
+        so a naive isVisible() toggle would re-open it (frozen help, 2026-10-17)."""
+        if self._help_tracker.open_value() == key:
+            self._help_tracker.set_open(None)
+            self._close_help_popup()
+            self._set_help_open(key, False)
+            return
+        self._close_help_popup()
         # black square centred over the picture, always (user 2026-10-11): the help sits where
         # the eye is, never over the controls being explained
         vr = self.view.rect()
@@ -690,11 +697,14 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         popup.show()
         popup.raise_()
         self._help_popup = popup
+        self._help_tracker.set_open(key)
         self._set_help_open(key, True)
 
 
     def _on_help_closed(self, key: str) -> None:
-        """Popup closed (Esc or click outside): reset the button border."""
+        """Popup closed (Esc/click-away): reset the border. Does NOT clear the tracker
+        flag (it is what makes the next '?' click read as a close); _HelpPressFilter
+        clears it on click-away."""
         self._set_help_open(key, False)
         self._help_popup = None
 
@@ -741,6 +751,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             self._result_sig.result.disconnect(self._on_result)
         except (TypeError, RuntimeError):
             pass
+        self._remove_help_press_filter()
         super().done(r)
 
 
@@ -785,6 +796,7 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
             self._result_sig.result.disconnect(self._on_result)
         except (TypeError, RuntimeError):
             pass
+        self._remove_help_press_filter()
         super().closeEvent(e)
 
 
