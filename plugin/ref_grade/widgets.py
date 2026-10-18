@@ -543,6 +543,11 @@ class SliderRow(QWidget):
         Toggles: the '?' click auto-closes the Qt.Popup during the press (before this
         clicked() runs), so the open decision reads the tracker flag, not isVisible()
         (frozen-help fix, 2026-10-17). A click away clears the flag via _HelpPressFilter.
+
+        The show is deferred by one event loop (2026-10-18, user: "two helps shortly
+        after another freezes"): showing a Qt.Popup in the same dispatch as the previous
+        popup's auto-close leaves a stuck mouse grab on Windows — the UI freezes until
+        the window is left and re-entered. One loop later the close has fully settled.
         """
         entry = load_help().get(self.name)
         if not entry or self.help_btn is None or self._help_tracker is None:
@@ -551,6 +556,15 @@ class SliderRow(QWidget):
             self._help_tracker.set_open(False)
             if self.help_popup is not None:
                 self.help_popup.hide()
+            return
+        self._help_tracker.set_open(True)
+        QTimer.singleShot(0, self._do_show_help_popup)
+
+    def _do_show_help_popup(self) -> None:
+        if not self._help_tracker.is_open:      # click-away cleared the flag meanwhile
+            return
+        entry = load_help().get(self.name)
+        if not entry or self.help_btn is None:
             return
         if self.help_popup is None:
             self.help_popup = QLabel(self)
@@ -569,7 +583,6 @@ class SliderRow(QWidget):
         self.help_popup.adjustSize()
         self.help_popup.move(self.help_btn.mapToGlobal(self.help_btn.rect().bottomLeft()))
         self.help_popup.show()
-        self._help_tracker.set_open(True)
 
     def label_text(self) -> str:
         """The label text shown to the left of the slider."""

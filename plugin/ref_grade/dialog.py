@@ -679,13 +679,25 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
     def _on_help_requested(self, key: str) -> None:
         """Toggle the help popup for `key`. Reads the tracker flag, not isVisible():
         the '?' click auto-closes the Qt.Popup during the press (before clicked() runs),
-        so a naive isVisible() toggle would re-open it (frozen help, 2026-10-17)."""
+        so a naive isVisible() toggle would re-open it (frozen help, 2026-10-17).
+
+        The show is deferred by one event loop (2026-10-18, user: "two helps shortly
+        after another freezes"): showing a Qt.Popup in the same dispatch as the previous
+        popup's auto-close leaves a stuck mouse grab on Windows — the UI freezes until
+        the window is left and re-entered. One loop later the close has fully settled."""
         if self._help_tracker.open_value() == key:
             self._help_tracker.set_open(None)
             self._close_help_popup()
             self._set_help_open(key, False)
             return
         self._close_help_popup()
+        self._help_tracker.set_open(key)
+        self._set_help_open(key, True)
+        QTimer.singleShot(0, lambda: self._open_help_popup(key))
+
+    def _open_help_popup(self, key: str) -> None:
+        if self._help_tracker.open_value() != key:   # click-away cleared it meanwhile
+            return
         # black square centred over the picture, always (user 2026-10-11): the help sits where
         # the eye is, never over the controls being explained
         vr = self.view.rect()
@@ -698,8 +710,6 @@ class RefGradeDialog(SectionsMixin, LayoutMixin, LutMixin, ReferenceMixin,
         popup.show()
         popup.raise_()
         self._help_popup = popup
-        self._help_tracker.set_open(key)
-        self._set_help_open(key, True)
 
 
     def _on_help_closed(self, key: str) -> None:
