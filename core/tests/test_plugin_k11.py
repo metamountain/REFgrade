@@ -21,9 +21,9 @@ class TestWheelsGainFalloff(k9b.K9bTestBase):
         self.app.processEvents()
 
     def test_rows_exist_in_wheels(self):
-        self.assertEqual(self._row("wheel_gain").default, 0.1)        # 2026-10-18: Kerngröße
+        self.assertEqual(self._row("wheel_gain").default, 0.0)        # 2026-10-18: Kerngröße, Default 0
         self.assertEqual(self._row("wheel_intensity").default, 1.0)
-        self.assertEqual(self._row("wheel_falloff").default, 0.1)     # 2026-10-18: Blur-Breite
+        self.assertEqual(self._row("wheel_falloff").default, 0.5)     # 2026-10-18: Blur-Breite, Default 0.5
 
     def test_gain_in_preview(self):
         self._wheels_on()
@@ -42,8 +42,8 @@ class TestWheelsGainFalloff(k9b.K9bTestBase):
         self._row("wheel_gain").set_value(0.3)
         self._row("wheel_falloff").set_value(0.2)
         self.dialog._reset_section("wheels")
-        self.assertAlmostEqual(self._row("wheel_gain").value(), 0.1)
-        self.assertAlmostEqual(self._row("wheel_falloff").value(), 0.1)
+        self.assertAlmostEqual(self._row("wheel_gain").value(), 0.0)
+        self.assertAlmostEqual(self._row("wheel_falloff").value(), 0.5)
 
 
 if __name__ == "__main__":

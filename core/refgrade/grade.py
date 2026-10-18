@@ -74,8 +74,10 @@ def _zone_masks(Y: torch.Tensor, gain: float, falloff: float) -> tuple[torch.Ten
     2026-10-18 (Nutzer): ersetzt das alte Split-Modell (p/w/o). Jede Zone ist ein kleiner
     WEISSER BEREICH (Kern) an ihrem Zentrum — Schatten bei Y=0, Mitten bei Y=0,5, Lichter
     bei Y=1 — mit weichem Falloff (Glow/Blur) darum. Gain macht den Kern größer, Falloff
-    den Rand weicher. Im Standard (0,1/0,1) gibt es grosse Lücken zwischen den Zonen, in
-    denen kein Rad wirkt; Gain und/oder Falloff schließen sie, bis sich die Zonen berühren.
+    den Rand weicher (Falloff 1,0 = volle Reichweite 0→1, schwarz→weiß). Im Standard
+    (0/0,5) überlappen die Zonen weich über die ganze Skala; Gain und/oder Falloff
+    verkleinert (bzw. erhöht) die Überdeckung — niedrige Werte öffnen Lücken, in denen
+    kein Rad wirkt.
     """
     g = torch.as_tensor(gain, dtype=Y.dtype, device=Y.device)
     f = torch.as_tensor(falloff, dtype=Y.dtype, device=Y.device)

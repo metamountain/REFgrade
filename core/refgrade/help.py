@@ -138,25 +138,25 @@ HELP: dict[str, dict[str, str]] = {
     "wheel_gain": {
         "short": "Size of each wheel's tone zone",
         "en": "Each wheel acts on a small white area (core) at its end of the tone scale — shadows "
-              "at 0, mids at 0.5, highlights at 1. Gain sizes that core: 0.1 (default) is a small "
-              "area, 0.5 grows the shadow core to the whole lower half and the highlight core to "
-              "the whole upper half. At the default there are big gaps between the zones where no "
-              "wheel acts; raising Gain (and/or Falloff) closes them until the zones meet.",
-        "tip": "Default 0.1. Raise it when a wheel should reach further into the neighbouring "
-               "tones (e.g. the shadow wheel into the mids); lower it for tight, local tints. At 0 "
-               "a wheel acts on almost nothing.",
-        "what": "How big the tone area each wheel covers. Right makes the shadow, midtone and highlight zones grow until they touch; left shrinks them back to small areas with big gaps between them.",
+              "at 0, mids at 0.5, highlights at 1. Gain sizes that core: 0 (default) is a single "
+              "point, 0.5 grows the shadow core to the whole lower half and the highlight core to "
+              "the whole upper half. At the default (0 / 0.5 Falloff) the zones overlap softly "
+              "over the whole scale; lower Gain (and Falloff) to open gaps where no wheel acts.",
+        "tip": "Default 0. Raise it when a wheel should reach further into the neighbouring "
+               "tones (e.g. the shadow wheel into the mids); keep it low for tight, local tints.",
+        "what": "How big the tone area each wheel covers. Right grows the shadow, midtone and highlight zones; left shrinks them back to small areas with gaps between them.",
     },
     "wheel_falloff": {
         "short": "Softness of the zone edges",
         "en": "How far the white core of each zone blurs into the neighbouring tones (a glow). 0 is "
-              "a hard edge, 0.5 a very wide soft gradient. Together with Gain it closes the gaps "
-              "between the zones: Gain grows the cores, Falloff widens the blur around them. At "
-              "the default (0.1 / 0.1) the zones are separate with big gaps.",
-        "tip": "Default 0.1. Raise it for a soft, gradual transition between the wheel zones; keep "
-               "it low when opposite colours (orange highlights, blue shadows) must not muddy the "
-               "midtones.",
-        "what": "How soft the edge of each wheel zone is. Right blurs the zone into the neighbouring tones like a glow; left keeps a hard edge.",
+              "a hard edge, 1.0 reaches the full black-to-white range. Together with Gain it "
+              "controls the overlap of the zones: Gain grows the cores, Falloff widens the blur "
+              "around them. At the default (0 / 0.5) the zones overlap softly over the whole "
+              "scale; lower values open gaps where no wheel acts.",
+        "tip": "Default 0.5. Raise it for a soft, gradual transition between the wheel zones "
+               "(1.0 = a zone spans the whole scale); keep it low when opposite colours (orange "
+               "highlights, blue shadows) must not muddy the midtones.",
+        "what": "How soft the edge of each wheel zone is. Right blurs the zone into the neighbouring tones like a glow, up to the full black-to-white range; left keeps a hard edge.",
     },
     "wheel_intensity": {
         "short": "Strength of all three colour wheels",

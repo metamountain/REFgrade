@@ -4,7 +4,7 @@ Prüft:
 1. Die Maskenberechnung passt exakt zur Kern-Formel in ``refgrade/grade.py::_zone_masks``
    (Cross-Check: die Schattenmaske wird über ein bekanntes ``lift_r`` aus dem echten
    Kern extrahiert und mit ``ZoneVisualizer._masks`` verglichen).
-2. Grosse Lücken im Standard (0.1/0.1): in den Lücken wirkt keine Maske.
+2. Default (0/0.5): Zonen überlappen; enge Zonen (0.1/0.1) haben grosse Lücken.
 3. Gain vergrößert die Kerne, Falloff die weichen Ränder.
 4. Gain + Falloff schließen die Lücken.
 5. Das Widget rendert ohne Crash.
@@ -52,17 +52,25 @@ class TestMasks(unittest.TestCase):
         self.app = QApplication.instance() or QApplication(sys.argv)
         self.v = ZoneVisualizer()
 
-    def test_big_gaps_at_default(self):
-        """Standard (0.1/0.1): in Y=0.25 und Y=0.75 wirkt keine Maske (grosse Lücken)."""
+    def test_zones_overlap_at_default(self):
+        """Default (0/0.5): Zonen überlappen — in Y=0.25 und Y=0.75 wirken S bzw. H."""
         for y in (0.25, 0.75):
             s, m, h = self.v._masks(y)
-            self.assertLess(s, 0.05, f"Y={y}: S={s}")
-            self.assertLess(h, 0.05, f"Y={y}: H={h}")
-        # Mittenkern: Y=0.5 voll M, keine S/H
+            self.assertGreater(s + h, 0.3, f"Y={y}: S+H={s + h}")
+        # Mittenkern: Y=0.5 voll M
         s, m, h = self.v._masks(0.5)
         self.assertGreater(m, 0.9)
         self.assertLess(s, 0.05)
         self.assertLess(h, 0.05)
+
+    def test_narrow_zones_have_gaps(self):
+        """Enge Zonen (0.1/0.1): in Y=0.25 und Y=0.75 wirkt keine Maske (grosse Lücken)."""
+        self.v.set_gain(0.1)
+        self.v.set_falloff(0.1)
+        for y in (0.25, 0.75):
+            s, m, h = self.v._masks(y)
+            self.assertLess(s, 0.05, f"Y={y}: S={s}")
+            self.assertLess(h, 0.05, f"Y={y}: H={h}")
 
     def test_zone_cores_at_default(self):
         """Standard: Kern-Zentren voll weiß — Y=0.05 (S), Y=0.5 (M), Y=0.95 (H)."""
@@ -118,7 +126,7 @@ class TestMasks(unittest.TestCase):
         L = 0.3
         # (0.0, 0.0) fällt weg: Kern = einzelner Punkt bei Y=0, den der Master-Clamp (EPS)
         # verlässt — degenerierter Fall, dort wirkt das Rad ohnehin nicht.
-        for gain, falloff in ((0.1, 0.1), (0.1, 0.0), (0.3, 0.3), (0.5, 0.5), (0.0, 0.4)):
+        for gain, falloff in ((0.0, 0.5), (0.1, 0.1), (0.1, 0.0), (0.3, 0.3), (0.5, 0.5), (0.0, 0.4)):
             vals = {**d, "wheel_gain": gain, "wheel_falloff": falloff, "lift_r": L}
             out_red = grade(img, vals)[0, 0, :, 0]   # roter Kanal über die N Pixel
             ch = y

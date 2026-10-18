@@ -287,8 +287,8 @@ class SectionsMixin:
         cbox.addWidget(_separator())
         # 2026-10-18 (user): Gain sizes the white zone cores, Falloff the blur (glow) —
         # together they close the gaps between the zones (default: big gaps).
-        self._wheel_gain_slider = SliderRow("wheel_gain", 0.0, 0.5, 0.1, 0.01, "Gain")
-        self._wheel_falloff_slider = SliderRow("wheel_falloff", 0.0, 0.5, 0.1, 0.01, "Falloff")
+        self._wheel_gain_slider = SliderRow("wheel_gain", 0.0, 0.5, 0.0, 0.01, "Gain")
+        self._wheel_falloff_slider = SliderRow("wheel_falloff", 0.0, 1.0, 0.5, 0.01, "Falloff")
         self._wheel_intensity_slider = SliderRow("wheel_intensity", 0.0, 2.0, 1.0, 0.01, "Intensity")
         self._wheel_intensity_slider.setObjectName("wheel_intensity")
         cbox.addWidget(self._wheel_intensity_slider)

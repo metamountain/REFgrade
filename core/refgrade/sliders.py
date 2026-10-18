@@ -28,8 +28,8 @@ def _lgg() -> list[Slider]:
     for c in chans:
         out.append(Slider(f"gain_{c}", "lgg", 0.0, 4.0, 1.0, 0.01,
                           core=(c == "m")))
-    out.append(Slider("wheel_gain", "lgg", 0.0, 0.5, 0.1, 0.01))        # 2026-10-18: Kerngröße der Zonen (weisser Bereich)
-    out.append(Slider("wheel_falloff", "lgg", 0.0, 0.5, 0.1, 0.01))     # 2026-10-18: Blur-Breite (Glow) um die Kerne
+    out.append(Slider("wheel_gain", "lgg", 0.0, 0.5, 0.0, 0.01))        # 2026-10-18: Kerngröße der Zonen (weisser Bereich); 2026-10-18: Default 0 (Punkt-Kern)
+    out.append(Slider("wheel_falloff", "lgg", 0.0, 1.0, 0.5, 0.01))     # 2026-10-18: Blur-Breite (Glow) um die Kerne; 2026-10-18: Max 1.0 (0→1 schwarz→weiß), Default 0.5
     out.append(Slider("wheel_intensity", "lgg", 0.0, 2.0, 1.0, 0.01))  # Reichweite der Räder
     return out
 

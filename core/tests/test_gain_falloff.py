@@ -2,8 +2,9 @@
 
 Modell: jede Zone ist ein kleiner weißer Bereich (Kern) an ihrem Zentrum — Schatten bei
 Y=0, Mitten bei Y=0.5, Lichter bei Y=1 — mit weichem Falloff (Glow) darum. Gain macht
-den Kern größer, Falloff den Rand weicher. Im Standard (0.1/0.1) gibt es grosse Lücken
-zwischen den Zonen; Gain und Falloff schließen sie.
+den Kern größer, Falloff den Rand weicher (1.0 = volle Reichweite 0→1). Im Standard
+(0/0.5) überlappen die Zonen weich über die ganze Skala; niedrige Gain/Falloff-Werte
+öffnen Lücken, in denen kein Rad wirkt.
 """
 
 from __future__ import annotations
@@ -35,12 +36,23 @@ def _make_pixel(val: float) -> torch.Tensor:
 class TestDefaults(unittest.TestCase):
     def test_defaults(self):
         d = _defaults()
-        self.assertAlmostEqual(d["wheel_gain"], 0.1)
-        self.assertAlmostEqual(d["wheel_falloff"], 0.1)
+        self.assertAlmostEqual(d["wheel_gain"], 0.0)
+        self.assertAlmostEqual(d["wheel_falloff"], 0.5)
 
-    def test_big_gaps_at_default(self):
-        """Default: grosse Lücken — in Y=0.25 und Y=0.75 wirkt kein Rad."""
+    def test_zones_overlap_at_default(self):
+        """Default (0/0.5): Zonen überlappen — in Y=0.25 und Y=0.75 wirken die Räder."""
         vals = _defaults()
+        vals["lift_b"] = 0.2
+        vals["gain_r"] = 1.5
+        for y in (0.25, 0.75):
+            out = grade(_make_pixel(y), vals)
+            d = (out - y).abs().max().item()
+            self.assertGreater(d, 1e-4, f"Y={y} im Default nicht verändert (Δ={d})")
+
+    def test_narrow_zones_have_gaps(self):
+        """Enge Zonen (0.1/0.1): grosse Lücken — in Y=0.25 und Y=0.75 wirkt kein Rad."""
+        vals = _defaults()
+        vals["wheel_gain"], vals["wheel_falloff"] = 0.1, 0.1
         vals["lift_b"] = 0.2
         vals["gain_r"] = 1.5
         for y in (0.25, 0.75):
@@ -114,7 +126,8 @@ class TestMidtonesUntouched(unittest.TestCase):
         vals["gain_r"], vals["gain_g"], vals["gain_b"] = 1.2, 1.2, 0.8   # Lichter → gelb
         return vals
 
-    def test_midtones_unchanged_at_default(self):
+    def test_midtones_unchanged_with_narrow_zones(self):
+        """Enge Zonen (0.1/0.1): Lichter gelb, Schatten blau — Mitten unberührt."""
         vals = self._yellow_hi_blue_lo()
         for y in (0.42, 0.5, 0.58):
             out = grade(_make_pixel(y), vals)
@@ -130,14 +143,16 @@ class TestMidtonesUntouched(unittest.TestCase):
 
     def test_master_slider_stays_in_its_zone(self):
         """Nutzer 2026-10-12: Highlights-Regler runter → nur die Lichter dunkler,
-        Mitten und Schatten unverändert."""
+        Mitten und Schatten unverändert (mit engen Zonen 0.1/0.1)."""
         vals = _defaults()
+        vals["wheel_gain"], vals["wheel_falloff"] = 0.1, 0.1
         vals["gain_m"] = 0.7
         for y in (0.1, 0.5):
             d = (grade(_make_pixel(y), vals) - y).abs().max().item()
             self.assertLess(d, 1e-4, f"Y={y} verändert um {d}")
         self.assertLess(grade(_make_pixel(0.95), vals)[0, 0, 0, 0].item(), 0.8)
         vals = _defaults()
+        vals["wheel_gain"], vals["wheel_falloff"] = 0.1, 0.1
         vals["gamma_m"] = 0.7
         for y in (0.1, 0.9):
             d = (grade(_make_pixel(y), vals) - y).abs().max().item()

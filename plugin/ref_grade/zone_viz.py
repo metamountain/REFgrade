@@ -1,8 +1,8 @@
 """Zone visualizer — a small B/W bar under the wheels showing the shadow/mid/highlight
 zone masks. It mirrors the EXACT mask computation in ``core/refgrade/grade.py::_zone_masks``,
-so it shows both Gain (core size) and Falloff (blur width): three white bumps with black
-gaps, and how the gaps close as the bumps grow. It re-renders only when Gain or Falloff
-change — never on a wheel drag, which is what the bars are not about.
+so it shows both Gain (core size) and Falloff (blur width): three white bumps (glow) and
+how they overlap or open into black gaps as Gain/Falloff change. It re-renders only when
+Gain or Falloff change — never on a wheel drag, which is what the bars are not about.
 
 2026-10-18 (user): "a graphic to visualize this? black and white under the wheels …
 combined for gain and falloff" — one graphic, both parameters.
@@ -29,8 +29,8 @@ class ZoneVisualizer(QWidget):
 
     Each bar shows one zone mask as a white→black gradient: white = the wheel acts fully
     on that tone, black = no effect. The zones are soft bumps (glow): Gain sizes the
-    white core, Falloff the blur around it. At the default there are big black gaps
-    between the bumps; raising Gain/Falloff closes them.
+    white core, Falloff the blur around it. At the default (0 / 0.5) the zones overlap
+    softly over the whole scale; lowering Gain/Falloff opens black gaps between them.
     """
 
     BAR_H = 3   # 2026-10-18 (user): schlanke Linien, keine grauen Streifen dazwischen
@@ -38,14 +38,15 @@ class ZoneVisualizer(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self._gain = 0.1       # = core default (sliders.py)
-        self._falloff = 0.1    # = core default
+        self._gain = 0.0       # = core default (sliders.py)
+        self._falloff = 0.5    # = core default
         self.setFixedHeight(self.BAR_H * 3 + self.GAP * 2)
         self.setMinimumWidth(160)
         self.setToolTip(
             "Zone masks Shadows / Mids / Highlights — white = the wheel acts on this tone. "
-            "Gain grows the white core areas, Falloff the soft edge (glow). "
-            "Gain and Falloff close the black gaps between the zones.")
+            "Gain grows the white core areas, Falloff the soft edge (glow) — at 1.0 a zone "
+            "reaches the full black-to-white range. Lower Gain/Falloff to open black gaps "
+            "between the zones.")
 
     def set_gain(self, v: float) -> None:
         self._gain = float(v)
